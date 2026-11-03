@@ -187,7 +187,6 @@ en puntos base, donde $i^{USD}$ es SOFR desde abril de 2018 y Fed funds antes. U
 
 Su magnitud no es despreciable: entre 2010 y 2026, comprar dólar siempre da +67,2% bruto y +26,4% neto de carry. En 2022 el dólar subió 0,9%, pero comprar siempre terminó en −6,1%.
 
-> [confirmar: que la fórmula coincide con la del código de evaluación del laboratorio. Las bases mencionan una columna de carry ya calculada que no venía en el archivo.]
 
 **Objetivos:**
 
