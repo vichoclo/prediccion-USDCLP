@@ -9,8 +9,7 @@
 | Insumo | Descripción |
 |---|---|
 | `base_usdclp 2.xlsx` | Base cruda del laboratorio Bloomberg. 66 series desde 1990 hasta el 2026-10-06, en formato ancho `ticker\|campo` (ej. `USDCLP Curncy\|PX_LAST`). Incluye OHLC del USD/CLP, monedas, commodities, bolsas, tasas locales y de EE.UU., volatilidades, posiciones de la banca y series macro mensuales con su `FECHA_RELEASE`. |
-| Diccionario del laboratorio | Describe cada serie y su hora de cierre. Establece que los cierres de una misma fecha se asumen disponibles al momento de decidir. |
-| `alol.xlsx` | Extracción propia desde el laboratorio Bloomberg con datos reales de octubre de 2026, para extender la base hasta el 2026-10-27 y probar el sistema de punta a punta. |
+| Diccionario del laboratorio | Describe cada serie y su hora de cierre. Establece que los cierres de una misma fecha se asumen disponibles al momento de decidir. 
 
 Todas las series son datos públicos de mercado vía Bloomberg, como exigen las bases.
 
