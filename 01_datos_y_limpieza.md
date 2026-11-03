@@ -1,6 +1,6 @@
 # 1. Datos y limpieza
 
-> **Resumen.** Partimos de la base Bloomberg entregada por el laboratorio (66 series, formato ancho) y la transformamos, con un único script reproducible, en una tabla diaria de **días hábiles chilenos desde el 9 de agosto de 2001**, con 105 columnas. Cada fila *t* contiene solo información conocida al cierre de *t*, y los objetivos miran a *t+1*. Las principales dificultades fueron: huecos en el spot del USD/CLP, series que “repiten” valores porque no hubo cotización, fechas de publicación de datos macro, series discontinuadas o que terminan antes, y un archivo de datos nuevos con el punto decimal perdido. Una auditoría posterior detectó una fuga de información en nuestra primera versión de la limpieza; la corregimos y la documentamos más abajo.
+> **Resumen.** Partimos de la base Bloomberg entregada por el laboratorio (66 series, formato ancho) y la transformamos, con un único script reproducible, en una tabla diaria de **días hábiles chilenos desde el 9 de agosto de 2001**, con 105 columnas. Cada fila *t* contiene solo información conocida al cierre de *t*, y los objetivos miran a *t+1*. Las principales dificultades fueron: huecos en el spot del USD/CLP, series que “repiten” valores porque no hubo cotización, fechas de publicación de datos macro, y series discontinuadas o que terminan antes. Una auditoría posterior detectó una fuga de información en nuestra primera versión de la limpieza; la corregimos y la documentamos más abajo.
 
 ---
 
@@ -9,7 +9,7 @@
 | Insumo | Descripción |
 |---|---|
 | `base_usdclp 2.xlsx` | Base cruda del laboratorio Bloomberg. 66 series desde 1990 hasta el 2026-10-06, en formato ancho `ticker\|campo` (ej. `USDCLP Curncy\|PX_LAST`). Incluye OHLC del USD/CLP, monedas, commodities, bolsas, tasas locales y de EE.UU., volatilidades, posiciones de la banca y series macro mensuales con su `FECHA_RELEASE`. |
-| Diccionario del laboratorio | Describe cada serie y su hora de cierre. Establece que los cierres de una misma fecha se asumen disponibles al momento de decidir. 
+| Diccionario del laboratorio | Describe cada serie y su hora de cierre. Establece que los cierres de una misma fecha se asumen disponibles al momento de decidir. |
 
 Todas las series son datos públicos de mercado vía Bloomberg, como exigen las bases.
 
@@ -41,11 +41,7 @@ Antes de tocar los datos fijamos cuatro reglas. Casi todas las decisiones que si
 ## 1.3 Flujo de la limpieza
 
 ```
-base_usdclp 2.xlsx (cruda)          alol.xlsx (oct-2026)
-        │                                   │
-        │                           limpiar_alol.py   ← repara decimales
-        │                                   │
-        └──────────── anexar.py ◄───────────┘          ← agrega 7–27 oct
+               base_usdclp 2.xlsx (cruda)
                           │
                  preparar_base_v2.py
                           │
@@ -103,7 +99,7 @@ El script genera además dos cortes más cortos, desde 2010 y desde 2018 (este �
 
 En la primera versión rellenábamos el spot con el **dólar observado del día siguiente** (`CLFXDOOB` de *t+1*), porque vimos que el observado de un día es casi igual al spot del día anterior (diferencia mediana de 1,25 CLP, contra 3,2 CLP respecto del spot del mismo día). Como proxy de nivel era bueno.
 
-El problema es que **el observado de *t+1* se publica en la mañana de *t+1***: al cierre de *t* todavía no existe. Usarlo en las variables de *t* es información del futuro. Lo detectamos en la auditoría de fuga (prueba de truncamiento, sección 1.13): al cortar la base en un día sin spot, 15 columnas cambiaban de valor respecto de la base completa.
+El problema es que **el observado de *t+1* se publica en la mañana de *t+1***: al cierre de *t* todavía no existe. Usarlo en las variables de *t* es información del futuro. Lo detectamos en la auditoría de fuga (prueba de truncamiento, sección 1.12): al cortar la base en un día sin spot, 15 columnas cambiaban de valor respecto de la base completa.
 
 La corrección fue reemplazar ese relleno por el arrastre del último dato conocido. Volvimos a correr el sistema completo y **los resultados no cambiaron**, pero la base dejó de violar la regla.
 
@@ -231,19 +227,7 @@ El diccionario completo (descripción, fuente, rezago, primer dato y cobertura p
 
 ---
 
-## 1.12 Dificultad 5: datos nuevos con el decimal perdido
-
-Para extender la base hasta octubre de 2026 extrajimos datos reales del laboratorio (`alol.xlsx`). Al abrirlo, las celdas numéricas habían **perdido el punto decimal**: la configuración regional del equipo leyó el punto como separador de miles (por ejemplo, USD/ZAR = 166380 en vez de 16,6380).
-
-**Solución** (`limpiar_alol.py`): para cada valor, buscamos la potencia de 10 que lo deja en la escala de la base (o del día anterior). Lo validamos en el traslape de ~240 días con la base original (octubre de 2025 a octubre de 2026): **0,000% de diferencia en las 17 series** (0,0003% en MSCI EM, por redondeo), lo que confirma además que es la misma fuente de precio. Descartamos filas sin fecha (barras intradía) y la fila del 28 de octubre, que era intradía. El 12 de octubre aparece correctamente como feriado.
-
-`anexar.py` agrega los 15 días hábiles nuevos (7 al 27 de octubre) a la base cruda, y la base tratada se regenera con el mismo script. Resultado: **6.283 días hábiles hasta el 2026-10-27**.
-
-Solo extrajimos las 17 series que usa el sistema final (USD/CLP OHLC, ZAR, cobre LME y COMEX, oro, DXY, BBDXY, MSCI EM, vol. EM, TPM, SOFR, `CHNI` 3M y 6M, CNH). El resto de las columnas queda vacío en esos días, así que las variables que dependen de ellas no deben usarse en el tramo extendido.
-
----
-
-## 1.13 Verificaciones
+## 1.12 Verificaciones
 
 | Prueba | Qué detecta | Resultado |
 |---|---|---|
@@ -251,11 +235,10 @@ Solo extrajimos las 17 series que usa el sistema final (USD/CLP OHLC, ZAR, cobre
 | Correlación de cada `x_*` con el objetivo de *t+1* | Fugas groseras (una variable que “ve” el objetivo) | Ninguna supera \|0,09\|. |
 | Feriados vs series locales | Feriados que la librería no conoce | Ninguno. |
 | Infinitos y valores imposibles | Errores de transformación | Ninguno. |
-| Calce de datos nuevos con la base | Errores de extracción o de escala | 0,000% en 17 series. |
 
 ---
 
-## 1.14 Hallazgos de los datos que condicionan el modelado
+## 1.13 Hallazgos de los datos que condicionan el modelado
 
 Estos resultados surgieron durante la limpieza y determinaron decisiones posteriores:
 
@@ -265,7 +248,7 @@ Estos resultados surgieron durante la limpieza y determinaron decisiones posteri
 
 ---
 
-## 1.15 Limitaciones y pendientes
+## 1.14 Limitaciones y pendientes
 
 - La fórmula del carry y el costo de transacción deben confirmarse contra el código de evaluación del laboratorio.
 - El rezago de 2 días para los flujos de la banca es un supuesto conservador, no verificado.
@@ -275,24 +258,13 @@ Estos resultados surgieron durante la limpieza y determinaron decisiones posteri
 
 ---
 
-## 1.16 Cómo reproducir
+## 1.15 Cómo reproducir
 
 ```bash
-# 1. (opcional) reparar los datos nuevos y validarlos contra la base
-python limpiar_alol.py alol.xlsx base_usdclp_2.xlsx
-#    → alol_limpio.csv, alol_calce_con_base.csv
-
-# 2. (opcional) anexarlos a la base cruda
-python anexar.py
-#    lee base_usdclp_2.xlsx y alol_limpio.csv → base_usdclp_actualizada.xlsx
-
-# 3. generar las bases tratadas
-python preparar_base_v2.py base_usdclp_actualizada.xlsx datos/procesados/ [--ipsa ipsa.csv]
+python preparar_base_v2.py "base_usdclp 2.xlsx" datos/procesados/ [--ipsa ipsa.csv]
 ```
 
 Dependencias: `pandas`, `numpy`, `openpyxl`, `holidays`.
-
-> [ajustar: `anexar.py` tiene los nombres de archivo fijos en el código; pasarlos a argumentos y ajustar las rutas a la estructura final del repositorio]
 
 ---
 
