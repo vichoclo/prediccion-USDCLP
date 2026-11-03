@@ -79,7 +79,7 @@ Nuestra primera versión partía en 2010. La extendimos al **9 de agosto de 2001
 
 El script genera además dos cortes más cortos, desde 2010 y desde 2018 (este último sin huecos en el spot), para comparar ventanas de entrenamiento en validación. **La elección entre cortes se hace en validación, nunca mirando el tramo de test.**
 
-> [confirmar: qué corte usa el modelo final]
+Finalmente se uso la base a partir del 2001 para el modelo LSTM
 
 ---
 
