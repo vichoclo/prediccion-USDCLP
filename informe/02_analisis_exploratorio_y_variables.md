@@ -226,7 +226,7 @@ Esto importa por dos razones:
 
 ### Principio: filtrar antes de mirar el resultado
 
-Toda selección se hace **solo con el tramo de desarrollo** (2015-2021). Validación sirve para comparar y el test se mira una sola vez. Elegir variables mirando la muestra completa, o el tramo con que luego se evalúa, produce resultados falsamente buenos.
+Toda selección se hace **solo con la segunda parte del tramo de desarrollo** (2015-2021; la sección 3.2 explica por qué no con todo el desarrollo, que parte en 2005). Validación sirve para comparar y el test se mira una sola vez. Elegir variables mirando la muestra completa, o el tramo con que luego se evalúa, produce resultados falsamente buenos.
 
 ### Paso 1 · Universo inicial
 
