@@ -20,11 +20,20 @@ Con señales tan pequeñas como las de la sección 2, es fácil encontrar una es
 |---|---|---|
 | Calentamiento | 2001-08 → 2001-11 | Llenar ventanas móviles (momentum de 20 días, volatilidad). No se predice. |
 | Entrenamiento inicial | 2001-12 → 2004-12 | Primer ajuste de los modelos. No se predice. |
-| **Desarrollo** | 2005-01 → 2021-12 | Predicciones fuera de muestra con las que se **eligen** variables, hiperparámetros, umbrales y variantes. Se divide en 2005-2014 y 2015-2021; las elecciones del modelo 2 se hacen en 2015-2021. |
+| **Desarrollo, parte 1** | 2005-01 → 2014-12 | Predicciones fuera de muestra del modelo 1. Sirven para revisar que el modelo se comporte de forma estable y como historia para los percentiles del modelo 2. **No se elige nada aquí.** |
+| **Desarrollo, parte 2** | 2015-01 → 2021-12 | Predicciones fuera de muestra con las que se **eligen** las variables del modelo 1, los umbrales del modelo 2 y la variante del GARCH. |
 | **Validación** | 2022-01 → 2024-12 | **Comparar** las configuraciones ya elegidas. No se usa para ajustar nada. |
 | **Test** | 2025-01 → último dato | Evaluación final. El código no lo predice salvo que se active `TOCAR_TEST = True`. |
 
-La columna `periodo` de la base tratada marca a qué tramo pertenece cada día.
+La columna `periodo` de la base tratada marca a qué tramo pertenece cada día (en ella, “desarrollo” abarca las dos partes).
+
+**Por qué las elecciones se hacen solo con 2015-2021 y no con todo el desarrollo:**
+
+1. **Las variables se eligieron antes de extender la base a 2001.** El filtro de variables (sección 2.8) se corrió sobre la base que partía en 2010. Con una ventana de 1.000 días para estimar cada modelo univariado, las primeras predicciones fuera de muestra aparecen recién hacia 2014. El primer año completo disponible para elegir era 2015.
+2. **El modelo 2 necesita historia del modelo 1.** Los umbrales se expresan como percentiles de la confianza de los 250 días anteriores, y el GARCH usa 1.000 retornos. Con 2005-2014 como antecedente, en 2015-2021 todas esas ventanas ya están completas.
+3. **Lo reciente se parece más a lo que viene.** La sección 2.4 mostró que las relaciones entre variables cambiaron con el tiempo. Elegir con 2015-2021 es elegir con el periodo más parecido a validación y test.
+
+La parte 1 (2005-2014) no se usó para ninguna elección, así que funciona como un control adicional: si un modelo rinde bien en 2015-2021 pero mal en 2005-2014, es una señal de que se ajustó a un periodo particular.
 
 **Por qué validación son tres años:** con un acierto de 54% y ~250 días por año, hacen falta unos 600 días para que la diferencia contra 50% sea significativa al 5%. Un tramo más corto no permitiría distinguir señal de azar.
 
@@ -70,11 +79,11 @@ El LSTM necesita decidir cuándo dejar de entrenar y cómo convertir su salida e
 
 | Decisión | Dónde se tomó | Criterio |
 |---|---|---|
-| Variables del modelo 1 | Desarrollo 2015-2021 | Estabilidad del signo y mejora de log-loss (sección 2.8) |
+| Variables del modelo 1 | Desarrollo, parte 2 (2015-2021) | Estabilidad del signo y mejora de log-loss (sección 2.8) |
 | Arquitectura del LSTM (16 unidades, dropout 0,2, 20 días) | Fijada antes de ver resultados | Red pequeña, por el tamaño de la muestra |
 | Regularización de la logística (C = 0,05) | Fijada antes de ver resultados | — |
-| Umbrales de confianza del modelo 2 | Desarrollo 2015-2021 | Retorno neto de 1 pb (criterio de las bases) |
-| Variante del GARCH | Desarrollo 2015-2021 | Retorno neto de 1 pb |
+| Umbrales de confianza del modelo 2 | Desarrollo, parte 2 (2015-2021) | Retorno neto de 1 pb (criterio de las bases) |
+| Variante del GARCH | Desarrollo, parte 2 (2015-2021) | Retorno neto de 1 pb |
 | Señales candidatas | Validación 2022-2024 | Ver sección 4.4 |
 
 ---
@@ -94,7 +103,7 @@ Para verificar que el walk-forward no usa información futura aplicamos dos prue
 
 - **Validación se miró más de una vez.** Se usó para comparar señales y, en el caso del LSTM, para reincorporarlo tras un primer descarte (sección 4.4). Por eso su resultado está algo inflado.
 - **El test también se consultó** en análisis exploratorios anteriores (sección 2.8). No se usó para elegir el sistema final, pero no es un tramo completamente virgen. La única evaluación sin ninguna contaminación es el **monitoreo en vivo**.
-- **La selección de variables no se repite dentro del walk-forward**: las variables se eligieron una vez con 2015-2021. El tramo 2015-2021 es, respecto de esa elección, dentro de muestra.
+- **La selección de variables no se repite dentro del walk-forward**: las variables se eligieron una vez con la parte 2 del desarrollo (2015-2021). Ese tramo es, respecto de esa elección, dentro de muestra; la parte 1 (2005-2014) no.
 - **Número de configuraciones:** llevamos registradas unas 310 en todo el proyecto. Es el *N* que usamos para el Sharpe deflactado.
 
 ### Referencias
