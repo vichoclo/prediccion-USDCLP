@@ -2,7 +2,7 @@
 
 Torneo Banco Itaú y FEN · Data Science en Finanzas: ¿Sube o baja el dólar mañana?
 
-[completar: nombres de la pareja]
+Vicente Acevedo y Luis portillo
 
 ## Resumen ejecutivo
 
@@ -28,6 +28,3 @@ Torneo Banco Itaú y FEN · Data Science en Finanzas: ¿Sube o baja el dólar ma
 - Retornos en puntos base (pb), logarítmicos.
 - *t* es el día de la decisión (al cierre de Santiago); *t+1* es la jornada que se predice.
 - Los textos entre corchetes `[completar: …]` o `[confirmar: …]` marcan datos pendientes.
-# prediccion-USDCLP
-# prediccion-USDCLP
-# prediccion-USDCLP
