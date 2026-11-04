@@ -33,7 +33,7 @@ Todas las cifras son fuera de muestra respecto del modelo 1: cada día se predic
 | *Operar siempre ±1 (promedio)* | +6,4% | +101,4% | +11,4% |
 | *No operar nunca* | 0% | 0% | 0% |
 
-![Gráfico 6](g6_resultado_desarrollo_validacion.png)
+![Gráfico 6](figure/g6_resultado_desarrollo_validacion.png)
 
 ### Sensibilidad a los costos (validación)
 
