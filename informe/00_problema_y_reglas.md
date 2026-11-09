@@ -1,6 +1,6 @@
 # 0. Problema, reglas y criterio de evaluación
 
-> **Resumen.** El torneo pide predecir si el dólar sube o baja en Chile al día siguiente y convertir esa predicción en una posición de −3, −1, 0, +1 o +3. Gana la estrategia con mayor valor económico neto de carry y costos, no la que más acierta. Como predecir una moneda a un día es apenas mejor que el azar, el problema central es **saber cuándo apostar y cuándo abstenerse**. Nuestra respuesta es un sistema de dos modelos: uno estima la dirección y su probabilidad; el otro decide el tamaño de la posición según la confianza de esa probabilidad y la volatilidad esperada.
+> **Resumen.** El torneo pide predecir si el dólar sube o baja en Chile al día siguiente y convertir esa predicción en una posición de −3, −1, 0, +1 o +3. Gana la estrategia con mayor valor económico neto de carry y costos, no la que más acierta. Como predecir una moneda a un día es apenas mejor que el azar, el problema central es **saber cuándo apostar y cuándo abstenerse**. Nuestra respuesta es un sistema de dos modelos: el primero estima la dirección y su probabilidad promediando un LSTM y una regresión logística; el segundo decide el tamaño de la posición según la confianza de esa probabilidad y la volatilidad esperada por un GARCH(1,1).
 
 ---
 
@@ -54,7 +54,7 @@ Base Bloomberg ──► limpieza (sección 1) ──► 11 variables (sección 
                                                │
                          ┌─────────────────────┴─────────────────────┐
                          │  MODELO 1 · dirección (sección 4)          │
-                         │  LSTM 20 días · logística · promedio       │
+                         │  promedio de LSTM (20 días) y logística    │
                          │  → p = P(conviene estar comprado)          │
                          └─────────────────────┬─────────────────────┘
                                                │
