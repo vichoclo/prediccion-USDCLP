@@ -1,106 +1,120 @@
-# 4. Modelo 1: dirección
+# 5. Modelo 2: exposición (−3, −1, 0, +1, +3)
 
-> **Resumen.** El modelo 1 estima, para cada día, la probabilidad *p* de que mañana convenga estar comprado en dólares (que el dólar suba más que el carry). Es un **modelo híbrido**: el promedio simple de dos componentes, una red **LSTM** que mira los últimos 20 días y una **regresión logística** con las mismas 11 variables. Esa probabilidad promedio es la que alimenta el modelo 2. La logística entrega las probabilidades mejor calibradas y el LSTM ordena los días de mayor confianza de una forma distinta. Combinarlos reduce la dependencia de un solo modelo sin estimar ningún parámetro adicional. Los dos componentes se reportan también por separado, como controles.
+> **Resumen.** El modelo 2 traduce la probabilidad del modelo 1 en una de las cinco exposiciones permitidas. Lo hace en dos pasos: primero, la **confianza** del modelo 1 (comparada con la de los últimos 250 días) decide si operar y si hacerlo con tamaño 1 o 3; después, un **GARCH(1,1)** pronostica la volatilidad del día siguiente y, si es anormalmente alta, recorta las apuestas fuertes. Los umbrales se eligieron en desarrollo. Para el sistema, que usa el promedio LSTM + logística, son: no operar bajo el percentil 60 de confianza, exposición 1 entre los percentiles 60 y 80, y exposición 3 sobre el percentil 80. Recorta de 3 a 1 cuando la volatilidad relativa supera 1,5.
 
 ---
 
-## 4.1 Qué predice
+## 5.1 Por qué un segundo modelo
 
-| Elemento | Definición |
+Las bases premian “discriminar cuándo tomar posición y cuándo abstenerse”, no acertar más veces. La sección 2 mostró que:
+
+- la señal de dirección es débil en promedio, pero **más fuerte en los días de mayor confianza** del modelo 1;
+- la volatilidad **no predice la dirección**, pero sí el tamaño del movimiento (sección 2.6).
+
+Separar estas dos tareas es lo que en la literatura se llama **meta-labeling** (López de Prado, 2018): un modelo decide el lado de la apuesta y otro decide si apostar y cuánto.
+
+---
+
+## 5.2 Paso 1 · Tamaño según la confianza
+
+Para cada día:
+
+1. Se calcula la confianza del modelo 1: \|*p* − 0,5\|.
+2. Se compara con la confianza de los **250 días hábiles anteriores** y se obtiene su **percentil** (0,9 = más confiado que el 90% de los días recientes).
+3. Se asigna el tamaño base:
+
+| Percentil de confianza | Tamaño |
 |---|---|
-| Objetivo | `y_sube_neto`: 1 si el retorno del dólar de *t* a *t+1* supera al carry (conviene estar comprado), 0 si no (conviene estar vendido). |
-| Salida | Probabilidad *p* entre 0 y 1. |
-| Dirección | Comprar si *p* > 0,5; vender si *p* < 0,5. |
-| Confianza | \|*p* − 0,5\|: cuánto se aleja la probabilidad del empate. La usa el modelo 2. |
-| Variables | Las 11 de la sección 2.8, con datos desde 2001. |
+| Menor que *u₁* | 0 (no operar) |
+| Entre *u₁* y *u₃* | 1 |
+| Mayor o igual a *u₃* | 3 |
 
-Usamos el retorno **neto de carry** porque es lo que realmente gana una posición: con carry positivo, el dólar tiene que subir más que el diferencial de tasas para que convenga estar comprado.
+4. El signo lo da el modelo 1: positivo si *p* > 0,5 (comprar dólar), negativo si *p* < 0,5 (vender).
 
-La función de pérdida es la **entropía cruzada binaria** (log-loss), que premia las probabilidades bien calibradas y no solo acertar la dirección. Las bases del torneo premian explícitamente la calibración.
+**Por qué un percentil y no la probabilidad directa.** La escala de la confianza cambia entre reajustes del modelo 1. El percentil móvil la hace comparable en el tiempo y solo usa información pasada, así que se puede aplicar en vivo.
 
----
+### Umbrales elegidos
 
-## 4.2 El modelo híbrido y sus dos componentes
+Buscamos en una grilla fijada antes de ver resultados (*u₁* ∈ {0,4; 0,6; 0,8}, *u₃* ∈ {0,8; 0,9; 0,95; nunca}) y elegimos la combinación con mayor retorno neto de 1 pb en la parte 2 del desarrollo (2015-2021, sección 3.2):
 
-### Componente A · LSTM (20 días)
+| Modelo | *u₁* (operar) | *u₃* (tamaño 3) | Días que opera (aprox.) |
+|---|---|---|---|
+| **Sistema: promedio LSTM + logística** | **0,6** | **0,8** | **40% más confiado** |
+| Control: logística sola | 0,6 | 0,8 | 40% más confiado |
+| Control: LSTM solo | 0,4 | 0,8 | 60% más confiado |
 
-Una red recurrente **LSTM** recibe, para cada día, la secuencia de las 11 variables de los últimos 20 días y devuelve una probabilidad.
-
-| Componente | Valor | Por qué |
-|---|---|---|
-| Capas | 1 capa LSTM + 1 capa lineal de salida | Con ~5.000 días de datos y ruido alto, una red grande se sobreajusta. |
-| Unidades | 16 | Ídem. |
-| Ventana de secuencia | 20 días hábiles (~1 mes) | Permite capturar dinámica reciente sin pedir demasiada historia. |
-| Regularización | Dropout 0,2; *weight decay* 10⁻³; *clipping* del gradiente en 1 | Contra el sobreajuste. |
-| Optimización | Adam, tasa 10⁻³, lotes de 128, máx. 60 épocas, *early stopping* con paciencia 8 | Sección 3.4. |
-| Calibración | Platt en la validación interna | Convierte la salida en una probabilidad interpretable. |
-| Semillas | 5 redes por reajuste; *p* = promedio | La inicialización aleatoria mueve el acierto hasta ~5 puntos; promediar reduce esa variabilidad. |
-
-**Por qué una LSTM.** Es una arquitectura diseñada para series de tiempo: mantiene una “memoria” que le permite reconocer patrones en la secuencia reciente de las variables (por ejemplo, varios días seguidos de debilidad del rand) que un modelo de un solo día no ve.
-
-### Componente B · Regresión logística
-
-Una logística con las mismas 11 variables del día *t* (sin secuencia), con regularización L2 (C = 0,05). Es el modelo más simple que entrega una probabilidad, y la referencia contra la que se mide si el LSTM aporta algo.
-
-### Modelo final · Promedio de ambos componentes
-
-La probabilidad que usa el sistema es el promedio simple de las probabilidades del LSTM y de la logística:
-
-$$p_{\text{promedio}} = \tfrac{1}{2}\,(p_{\text{LSTM}} + p_{\text{logística}})$$
-
-En la literatura de pronósticos, combinar modelos con pesos iguales suele superar a elegir el mejor, porque los errores de cada uno se compensan en parte (Timmermann, 2006). No requiere estimar pesos, así que no agrega riesgo de sobreajuste. Además, compensa la principal debilidad de cada componente: la logística ve solo el día *t*, y el LSTM depende de la inicialización aleatoria.
+Los controles aplican el mismo procedimiento a cada componente por separado, con sus propios umbrales elegidos en desarrollo. En todos, el tamaño 3 se usa en el 20% de días de mayor confianza.
 
 ---
 
-## 4.3 Calidad de las probabilidades
+## 5.3 Paso 2 · Ajuste por volatilidad con GARCH(1,1)
 
-Medimos dos cosas: si la probabilidad es mejor que la frecuencia base (mejora de log-loss) y si los días de mayor confianza aciertan más (acierto en el quintil superior, Q5).
+### El pronóstico
 
-| Modelo | Mejora de log-loss ×1000, validación | Acierto Q5 desarrollo, parte 2 (2015-21) | Acierto Q5 validación | Retorno medio Q5 validación (pb/día) |
-|---|---|---|---|---|
-| **Modelo final: promedio LSTM + logística** | **+3,8** | **56,2%** | **60,4%** | **+14,3** |
-| Componente: LSTM 20 días | +1,4 | 54,1% | 53,7% | +7,1 |
-| Componente: logística | +5,3 | 55,2% | 61,7% | +15,6 |
-| Control: LSTM de 1 día | +3,6 | 50,0% | 58,4% | +7,2 |
+Un **GARCH(1,1)** pronostica la varianza del retorno del día siguiente:
 
-Retorno medio con exposición 1 en la dirección del modelo, sin costos.
+$$\sigma^2_{t+1} = \omega + \alpha\, r_t^2 + \beta\, \sigma^2_t$$
 
-**Lectura:**
+- Se estima con los **últimos 1.000 retornos** y se reestima cada **21 días**.
+- Entre reestimaciones, la varianza se actualiza día a día con los parámetros vigentes.
+- Usa solo retornos hasta *t*.
 
-- **La logística es la mejor calibrada** (mayor mejora de log-loss) y la que más acierta en sus días de mayor confianza.
-- **El LSTM con secuencia no supera al LSTM de un solo día en calibración**: mirar 20 días hacia atrás no mejora la probabilidad promedio. Coincide con la sección 2.3, donde la dinámica pasada no mostró signo estable.
-- **Pero el LSTM ordena distinto los días.** Operando solo el 40% de días con mayor confianza (percentil móvil), el LSTM gana +35,8% en validación frente a +19,5% de la logística. Esa diferencia en el ordenamiento es lo que justifica mantenerlo como señal y combinarlo.
-- **El promedio queda entre ambos componentes en calibración y cerca de la logística en los días de mayor confianza**, y es el que más acierta en Q5 en la parte 2 del desarrollo. En la parte 1 del desarrollo (2005-2014), que no se usó para elegir, también mejora a la frecuencia base (+1,7 ×1000), mientras el LSTM solo no lo hace (sección 6.3).
-- **La semilla importa.** Con una sola red, el acierto en Q5 del LSTM varía entre 49,7% y 54,4% según la semilla; por eso promediamos 5.
+Con la volatilidad pronosticada se calcula la **volatilidad relativa**: σ del día dividida por la mediana de σ de los 250 días anteriores. Vale ~1 en un día normal y más de 1 en días agitados. Usamos la volatilidad relativa porque el nivel de volatilidad del peso cambió de régimen desde 2022, y un umbral fijo en nivel habría dejado de discriminar.
 
----
+### Por qué GARCH(1,1)
 
-## 4.4 Cómo llegamos al modelo híbrido
-
-Lo dejamos explícito porque afecta la lectura de los resultados.
-
-1. **Regla fijada antes de ver resultados:** el LSTM de 20 días se descartaba si, en validación, su acierto en el quintil de mayor confianza no superaba al de la logística y al del LSTM de 1 día. **No pasó la regla** (53,7% contra 61,7% y 58,4%).
-2. **Revisión por retorno:** como el criterio del torneo es el valor económico y no el acierto, revisamos el retorno operando los días de mayor confianza. Ahí el LSTM sí destacaba (+35,8% vs +19,5% en el 40% superior), aunque la diferencia con la logística no es significativa (bootstrap: P = 0,23) y depende del corte (en el 20% superior gana la logística: +28,0% vs +4,0%).
-3. **Mantener el LSTM como componente:** se conservó el LSTM junto con la logística y su promedio, y se eligieron los umbrales del modelo 2 de cada uno en desarrollo.
-4. **Elección del modelo final:** usamos el **promedio** como sistema. La razón es de principio y no de rendimiento: combinar dos modelos con pesos iguales diversifica el riesgo de modelo (Timmermann, 2006) sin estimar nada adicional.
-
-La evidencia de los tramos es consistente con esa elección, pero no la decide. En validación, el promedio y la logística sola quedan prácticamente empatados (Sharpe 1,16 contra 1,15). La logística sola rindió más en la parte 1 del desarrollo (+126% contra +82%) y calibra mejor. A favor del promedio, es el único de los tres que supera a operar siempre ±1 al 5% tanto en la parte 1 del desarrollo como en validación (sección 6.3).
-
-Estos pasos usaron la validación más de una vez, así que sus resultados deben leerse como optimistas (sección 3.7).
-
----
-
-## 4.5 Versiones descartadas
-
-| Versión | Por qué se descartó |
+| Alternativa | Lo que encontramos |
 |---|---|
-| Versión “completa” (15 variables, datos desde 2010) | Menos historia; el LSTM empeora la log-loss en validación (−0,8). |
-| LSTM de 1 día | Control para medir si la secuencia aporta. Bien calibrado, pero sin ventaja al operar. |
-| LSTM solo o logística sola como modelo final | No se descartaron: son los componentes del modelo híbrido y se reportan como controles en las secciones 6 y 7. |
-| Otros modelos (Taylor, XGBoost, aprendizaje por refuerzo y otros) | Sección 8. |
+| GARCH(1,1) | Persistencia α + β ≈ 0,98 (α 0,07; β 0,91). Volatilidad pronosticada media 10,7% vs realizada 11,1% en desarrollo; 15,6% vs 16,4% en validación. Calibración por deciles cerca de la diagonal. |
+| EWMA (RiskMetrics, λ = 0,94) | Prácticamente igual (pérdida QLIKE +0,02% en desarrollo). |
+| GJR-GARCH (asimétrico) | Las depreciaciones del peso sí suben más la volatilidad, pero modelarlo no mejora el pronóstico. |
+| HAR con volatilidad implícita | Algo mejor, sin diferencia significativa. |
+
+Es consistente con la literatura: con datos diarios, es difícil superar a un GARCH(1,1) (Hansen y Lunde, 2005).
+
+### La regla
+
+Probamos variantes fijadas antes de ver resultados y elegimos en desarrollo. Para el sistema se eligió un **tope** (y la misma variante resultó elegida para los dos controles):
+
+| Volatilidad relativa | Ajuste |
+|---|---|
+| ≤ 1,5 | Sin cambio |
+| > 1,5 | Una exposición de 3 baja a 1 |
+
+**Por qué un tope y no escalar todo por volatilidad.** En monedas, ajustar el tamaño por volatilidad casi no mejora el Sharpe, pero sí reduce las pérdidas extremas (Harvey et al., 2018). El tope evita la apuesta más fuerte justo en los días más riesgosos, sin intervenir el resto del tiempo.
+
+---
+
+## 5.4 La decisión completa de un día
+
+```
+p del modelo 1 ──► dirección = signo(p − 0,5)
+      │
+      └──► confianza |p − 0,5| ──► percentil vs 250 días previos ──► tamaño 0 / 1 / 3
+                                                                          │
+retornos hasta t ──► GARCH(1,1) ──► σ(t+1) / mediana 250 días ──► si > 1,5: 3 → 1
+                                                                          │
+                                         exposición = dirección × tamaño ∈ {−3, −1, 0, +1, +3}
+```
+
+**Resultado diario:**
+
+$$\text{resultado}_t = e_t \times \text{retorno neto de carry}_{t \to t+1} - c \times |e_t - e_{t-1}|$$
+
+donde *c* es el costo por unidad de cambio de exposición. Elegimos con *c* = 1 pb y reportamos 0, 1 y 2 pb. [confirmar: costo que aplica el laboratorio]
+
+---
+
+## 5.5 Advertencias
+
+- **El tope está en el borde de la grilla** (1,5 es el valor menos intervencionista probado). Cambia unos 20 días por tramo. En validación, todos esos días fueron de julio a octubre de 2022: la mejora que aporta el GARCH depende de un solo episodio.
+- **Toda la ganancia viene de los días con exposición 3.** En validación, los días con ±1 pierden en promedio. Maximizar el retorno empuja hacia el tamaño 3, que es el que más amplifica también la suerte.
+- **Exposición 0 vale 0** según la fórmula de las bases (sin carry). Si el laboratorio abona la tasa en pesos a la posición fuera del mercado, cambiaría la comparación. [confirmar con el laboratorio]
+- **Señal en vivo:** se envía la exposición del sistema (promedio LSTM + logística). Las exposiciones de los controles se calculan solo como diagnóstico.
 
 ### Referencias
 
-- Hochreiter, S. y Schmidhuber, J. (1997). Long short-term memory. *Neural Computation*, 9(8), 1735-1780.
-- Platt, J. (1999). Probabilistic outputs for support vector machines and comparisons to regularized likelihood methods. *Advances in Large Margin Classifiers*, 61-74.
-- Timmermann, A. (2006). Forecast combinations. En *Handbook of Economic Forecasting*, vol. 1, 135-196. Elsevier.
+- Bollerslev, T. (1986). Generalized autoregressive conditional heteroskedasticity. *Journal of Econometrics*, 31(3), 307-327.
+- Hansen, P. y Lunde, A. (2005). A forecast comparison of volatility models: does anything beat a GARCH(1,1)? *Journal of Applied Econometrics*, 20(7), 873-889.
+- Harvey, C., Hoyle, E., Korgaonkar, R., Rattray, S., Sargaison, M. y Van Hemert, O. (2018). The impact of volatility targeting. *Journal of Portfolio Management*, 45(1), 14-33.
+- López de Prado, M. (2018). *Advances in Financial Machine Learning*. Wiley.
