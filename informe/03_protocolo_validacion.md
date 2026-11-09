@@ -84,7 +84,8 @@ El LSTM necesita decidir cuándo dejar de entrenar y cómo convertir su salida e
 | Regularización de la logística (C = 0,05) | Fijada antes de ver resultados | — |
 | Umbrales de confianza del modelo 2 | Desarrollo, parte 2 (2015-2021) | Retorno neto de 1 pb (criterio de las bases) |
 | Variante del GARCH | Desarrollo, parte 2 (2015-2021) | Retorno neto de 1 pb |
-| Señales candidatas | Validación 2022-2024 | Ver sección 4.4 |
+| Reincorporar el LSTM como componente | Validación 2022-2024 | Retorno operando los días de mayor confianza (sección 4.4) |
+| Modelo final: promedio LSTM + logística | Después de ver validación | Combinación con pesos iguales, justificada por diversificación del riesgo de modelo (sección 4.4) |
 
 ---
 
@@ -101,7 +102,7 @@ Para verificar que el walk-forward no usa información futura aplicamos dos prue
 
 ## 3.7 Limitaciones del protocolo
 
-- **Validación se miró más de una vez.** Se usó para comparar señales y, en el caso del LSTM, para reincorporarlo tras un primer descarte (sección 4.4). Por eso su resultado está algo inflado.
+- **Validación se miró más de una vez.** Se usó para reincorporar el LSTM tras un primer descarte y la elección del promedio como modelo final se hizo después de ver los resultados de validación de los tres modelos (sección 4.4). Por eso su resultado está algo inflado.
 - **El test también se consultó** en análisis exploratorios anteriores (sección 2.8). No se usó para elegir el sistema final, pero no es un tramo completamente virgen. La única evaluación sin ninguna contaminación es el **monitoreo en vivo**.
 - **La selección de variables no se repite dentro del walk-forward**: las variables se eligieron una vez con la parte 2 del desarrollo (2015-2021). Ese tramo es, respecto de esa elección, dentro de muestra; la parte 1 (2005-2014) no.
 - **Número de configuraciones:** llevamos registradas unas 310 en todo el proyecto. Es el *N* que usamos para el Sharpe deflactado.
