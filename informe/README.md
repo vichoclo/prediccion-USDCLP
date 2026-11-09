@@ -2,27 +2,28 @@
 
 Torneo Banco Itaú y FEN · Data Science en Finanzas: ¿Sube o baja el dólar mañana?
 
-Vicente Acevedo y José Portillo
+[completar: nombres de la pareja]
 
 ## Resumen ejecutivo
 
-**Estrategia.** Usamos dos modelos. El **modelo 1** estima la probabilidad de que convenga estar comprado en dólares al día siguiente, neto de carry. Reportamos tres señales: un LSTM de 20 días, una logística regularizada y el promedio de ambas. Las tres usan las mismas 11 variables: cobre, oro, dólar global (DXY y BBDXY), rand, acciones emergentes, volatilidad emergente y calendario. El **modelo 2** convierte esa probabilidad en una exposición. Se abstiene cuando la confianza es baja, usa ±1 cuando es media y ±3 cuando es alta, y un GARCH(1,1) baja el 3 a 1 cuando la volatilidad esperada supera 1,5 veces su nivel normal. Todo se evalúa en walk-forward: cada día se predice con modelos entrenados solo con datos anteriores.
+**Estrategia.** Usamos dos modelos. El **modelo 1** estima la probabilidad de que convenga estar comprado en dólares al día siguiente, neto de carry. Es un modelo híbrido: el promedio simple de un LSTM que mira los últimos 20 días y una regresión logística regularizada. Ambos componentes usan las mismas 11 variables: cobre, oro, dólar global (DXY y BBDXY), rand, acciones emergentes, volatilidad emergente y calendario. El **modelo 2** convierte esa probabilidad en una exposición. Se abstiene cuando la confianza es baja, usa ±1 cuando es media y ±3 cuando es alta, y un GARCH(1,1) baja el 3 a 1 cuando la volatilidad esperada supera 1,5 veces su nivel normal. Todo se evalúa en walk-forward: cada día se predice con modelos entrenados solo con datos anteriores.
 
 **Resultado fuera de muestra (validación 2022-2024, neto de carry).**
 
-| Señal | Sin costos | Con 1 pb | Sharpe (1 pb) | Comprar siempre |
+| Estrategia | Sin costos | Con 1 pb | Sharpe (1 pb) | Máxima caída |
 |---|---|---|---|---|
-| Promedio LSTM + logística | +126,3% | +107,7% | 1,16 | +3,0% |
-| Logística | +120,3% | +101,1% | 1,15 | |
-| LSTM 20 días | +79,6% | +67,3% | 0,82 | |
+| **Sistema: promedio LSTM + logística + GARCH** | **+126,3%** | **+107,7%** | **1,16** | −18,6% |
+| *Comprar siempre* | | +3,0% | | −29,7% |
+| *Operar siempre ±1* | | +11,4% | | |
+| *No operar* | | 0% | | |
 
-El resultado se mantiene en 2005-2014, un tramo que no se usó para ninguna elección: el promedio ganó +82,4% y la logística +126,0%, frente a −2,9% de comprar siempre.
+El resultado se mantiene en 2005-2014, un tramo que no se usó para ninguna elección: el sistema ganó +82,4%, frente a −2,9% de comprar siempre. Como control, cada componente por separado gana +101,1% (logística) y +67,3% (LSTM) en validación.
 
 [completar: resultado en el tramo de test con el código de evaluación del laboratorio]
 
-**Significancia.** En validación, las tres señales superan a operar siempre ±1 (bootstrap por bloques, p = 0,013-0,022), y el promedio y la logística también superan a no operar (p = 0,030 y 0,042). Ninguna supera a comprar siempre al 5%. La dirección elegida por el modelo le gana a una dirección al azar con la misma exposición en el 98-99% de los sorteos (promedio y logística).
+**Significancia.** En validación, el sistema supera a operar siempre ±1 (bootstrap por bloques, p = 0,013) y a no operar (p = 0,030), y en 2005-2014 también supera a operar siempre ±1 (p = 0,049). No supera a comprar siempre al 5% (p = 0,096). Su dirección le gana a una dirección al azar con la misma exposición en el 98% de los sorteos.
 
-**Dónde está el valor.** El sistema no opera en ~60% de los días, y en esos días su dirección no es mejor que una moneda. Más del 100% del resultado proviene del ~19% de días con exposición 3, que aciertan 61-62%. Esos días coinciden con movimientos fuertes y coordinados del dólar global y las materias primas que el peso todavía no incorporó al cierre de Santiago.
+**Dónde está el valor.** El sistema no opera en el 58% de los días, y en esos días su dirección no es mejor que una moneda. El 119% del resultado proviene del 19% de días con exposición 3, que aciertan 61%. Esos días coinciden con movimientos fuertes y coordinados del dólar global y las materias primas que el peso todavía no incorporó al cierre de Santiago.
 
 **Limitaciones.**
 
