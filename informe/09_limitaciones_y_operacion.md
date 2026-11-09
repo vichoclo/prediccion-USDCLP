@@ -9,11 +9,13 @@
 | Limitación | Evidencia | Sección |
 |---|---|---|
 | **Dependencia del cierre asincrónico** | Más de la mitad de la ganancia de validación se genera en la apertura del día siguiente; sin ese canal (versión estricta) el sistema prácticamente no tiene señal. | 2.4, 6.4, 6.5 |
-| **Debilitamiento de la señal** | 2024 fue cercano a cero en las tres señales; la fracción del movimiento global que el peso incorpora al día siguiente cayó de 30-40% a 4-7%. | 2.4, 6.2 |
+| **Debilitamiento de la señal** | 2024 fue cercano a cero para el sistema y ambos controles; la fracción del movimiento global que el peso incorpora al día siguiente cayó de 30-40% a 4-7%. | 2.4, 6.2 |
 | **Concentración** | Más del 100% del resultado viene del ~19% de días con exposición 3; sin los 10 mejores días de validación queda alrededor de un cuarto de la ganancia. | 6.4, 7.1 |
 | **Pruebas múltiples** | Con ~310 configuraciones, el Sharpe deflactado de validación es 0,18. | 6.3 |
-| **Validación usada más de una vez** | Se usó para comparar señales y para reincorporar el LSTM. | 3.7, 4.4 |
+| **Validación usada más de una vez** | Se usó para reincorporar el LSTM y para elegir el promedio como modelo final. | 3.7, 4.4 |
 | **Selección de variables fuera del walk-forward** | Las variables se eligieron una vez con 2015-2021; ese tramo es dentro de muestra respecto de la selección. | 3.7 |
+| **Elección del modelo final después de ver validación** | El promedio y la logística sola quedan casi empatados en validación; la elección se justifica por diversificación y no por rendimiento. | 4.4 |
+| **Componente LSTM débil por sí solo** | En 2005-2014 el LSTM solo gana +22,5% y su dirección no supera al azar (placebo 18%). Su aporte al sistema es el ordenamiento de los días, no la dirección. | 6.3 |
 | **Dependencia de la semilla del LSTM** | Con una sola red, el acierto en el quintil superior varía hasta 5 puntos. Se mitiga promediando 5 semillas. | 4.2 |
 | **Tope del GARCH en el borde de la grilla** | Su aporte en validación proviene de un solo episodio (julio-octubre de 2022). | 5.5, 7.4 |
 
@@ -61,7 +63,7 @@ Señal al cierre del AAAA-MM-DD (para la jornada siguiente):
   exposición sugerida: −3
 ```
 
-**Señal enviada:** el sistema produce una exposición por cada señal (LSTM, logística y promedio). [confirmar: cuál se envía al monitoreo en vivo]
+**Señal enviada:** la exposición del sistema (promedio LSTM + logística, con tope GARCH). Las exposiciones de la logística sola y del LSTM solo se registran en la bitácora solo como diagnóstico.
 
 **Reglas de operación fijadas antes del monitoreo:**
 
