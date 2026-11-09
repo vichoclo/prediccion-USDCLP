@@ -1,6 +1,6 @@
 # 6. Resultados fuera de muestra y significancia
 
-> **Resumen.** Evaluamos el sistema completo (modelo 1 + modelo 2) con sus tres señales, neto de carry y de costos, en tres tramos fuera de muestra: las dos partes del desarrollo y la validación. En **validación (2022-2024)** las tres señales superan a las referencias del torneo. El promedio LSTM + logística gana +107,7% con 1 pb de costo, frente a +3,0% de comprar siempre, y la diferencia es significativa al 5% contra operar siempre ±1 y contra no operar. El resultado se sostiene en la parte del desarrollo que no participó en ninguna elección (2005-2014). Hay tres advertencias: más de la mitad de la ganancia proviene del cierre asincrónico; 2024 ya fue prácticamente cero; y, al corregir por las ~310 configuraciones probadas, el resultado no es concluyente.
+> **Resumen.** Evaluamos el sistema completo (promedio LSTM + logística → confianza → GARCH), neto de carry y de costos, en tres tramos fuera de muestra: las dos partes del desarrollo y la validación. Como control, reportamos también cada componente por separado. En **validación (2022-2024)** el sistema supera a las referencias del torneo: gana +107,7% con 1 pb de costo, frente a +3,0% de comprar siempre, y la diferencia es significativa al 5% contra operar siempre ±1 y contra no operar. El resultado se sostiene en la parte del desarrollo que no participó en ninguna elección (2005-2014). Hay tres advertencias: más de la mitad de la ganancia proviene del cierre asincrónico; 2024 ya fue prácticamente cero; y, al corregir por las ~310 configuraciones probadas, el resultado no es concluyente.
 
 ---
 
@@ -8,7 +8,8 @@
 
 | Elemento | Definición |
 |---|---|
-| Sistema | Modelo 1 (sección 4) → modelo 2 (sección 5). Tres señales: promedio LSTM + logística, logística, LSTM. Para las tres, el GARCH elegido en desarrollo fue el mismo: tope 1,5 (un 3 baja a 1 si la volatilidad relativa supera 1,5). |
+| Sistema | Modelo 1 (promedio de LSTM y logística, sección 4) → modelo 2 (confianza + tope GARCH 1,5, sección 5). |
+| Controles | El mismo procedimiento aplicado a la logística sola y al LSTM solo, cada uno con sus umbrales elegidos en desarrollo. Sirven para ver qué aporta cada componente; no son estrategias alternativas. |
 | Resultado diario | exposición × retorno neto de carry − costo × \|cambio de exposición\| |
 | Costos | 0, 1, 2 y 5 pb por unidad de cambio de exposición. La cifra principal usa 1 pb. [confirmar: costo del laboratorio] |
 | Referencias (bases) | **Comprar siempre** (+1 todos los días), **no operar nunca** (0) y **operar siempre con exposición 1** en la dirección de la señal (±1). |
@@ -24,39 +25,39 @@ Todas las cifras son fuera de muestra respecto del modelo 1: cada día se predic
 
 ### Por tramo, con 1 pb de costo
 
-| Señal | Desarrollo p1 2005-14 | Desarrollo p2 2015-21 | **Validación 2022-24** |
+| Estrategia | Desarrollo p1 2005-14 | Desarrollo p2 2015-21 | **Validación 2022-24** |
 |---|---|---|---|
-| Promedio LSTM + logística | +82,4% (Sharpe 0,56) | +283,4% (1,17) | **+107,7% (1,16)** |
-| Logística | +126,0% (0,76) | +210,3% (0,99) | **+101,1% (1,15)** |
-| LSTM 20 días | +22,5% (0,22) | +231,4% (1,08) | **+67,3% (0,82)** |
+| **Sistema: promedio LSTM + logística** | **+82,4% (Sharpe 0,56)** | **+283,4% (1,17)** | **+107,7% (1,16)** |
+| *Control: logística sola* | +126,0% (0,76) | +210,3% (0,99) | +101,1% (1,15) |
+| *Control: LSTM solo* | +22,5% (0,22) | +231,4% (1,08) | +67,3% (0,82) |
 | *Comprar siempre* | −2,9% | +20,5% | +3,0% |
-| *Operar siempre ±1 (promedio)* | +6,4% | +101,4% | +11,4% |
+| *Operar siempre ±1 (dirección del sistema)* | +6,4% | +101,4% | +11,4% |
 | *No operar nunca* | 0% | 0% | 0% |
 
-![Gráfico 6](figuras/g6_resultado_desarrollo_validacion.png)
+![Gráfico 6](g6_resultado_desarrollo_validacion.png)
 
 ### Sensibilidad a los costos (validación)
 
-| Señal | 0 pb | 1 pb | 2 pb | 5 pb | Costo de equilibrio |
+| Estrategia | 0 pb | 1 pb | 2 pb | 5 pb | Costo de equilibrio |
 |---|---|---|---|---|---|
-| Promedio | +126,3% | +107,7% | +90,7% | +47,6% | 9,6 pb |
-| Logística | +120,3% | +101,1% | +83,6% | +39,8% | 8,7 pb |
-| LSTM | +79,6% | +67,3% | +55,8% | +25,9% | 8,2 pb |
+| **Sistema** | +126,3% | +107,7% | +90,7% | +47,6% | 9,6 pb |
+| Control: logística | +120,3% | +101,1% | +83,6% | +39,8% | 8,7 pb |
+| Control: LSTM | +79,6% | +67,3% | +55,8% | +25,9% | 8,2 pb |
 
-El costo de equilibrio es el costo por unidad de rotación que dejaría el resultado en cero. Las tres señales soportan costos varias veces mayores que el supuesto de 1 pb.
+El costo de equilibrio es el costo por unidad de rotación que dejaría el resultado en cero. El sistema soporta costos casi diez veces mayores que el supuesto de 1 pb.
 
 ### Riesgo y uso de la exposición (validación, 1 pb)
 
-| Señal | Máxima caída | Peor mes | % días fuera (0) | % días en ±1 | % días en ±3 |
+| Estrategia | Máxima caída | Peor mes | % días fuera (0) | % días en ±1 | % días en ±3 |
 |---|---|---|---|---|---|
-| Promedio | −18,6% | −13,3% | 58% | 23% | 19% |
-| Logística | −16,4% | −11,1% | 59% | 23% | 18% |
-| LSTM | −24,3% | −11,1% | 38% | 43% | 19% |
+| **Sistema** | −18,6% | −13,3% | 58% | 23% | 19% |
+| Control: logística | −16,4% | −11,1% | 59% | 23% | 18% |
+| Control: LSTM | −24,3% | −11,1% | 38% | 43% | 19% |
 | *Comprar siempre* | −29,7% | — | 0% | 100% | 0% |
 
 ### Por año (1 pb)
 
-| Año | Promedio | Logística | LSTM |
+| Año | **Sistema** | Control: logística | Control: LSTM |
 |---|---|---|---|
 | 2015 | +14,2% | +13,8% | +24,8% |
 | 2016 | +40,5% | +41,0% | +22,7% |
@@ -69,7 +70,7 @@ El costo de equilibrio es el costo por unidad de rotación que dejaría el resul
 | 2023 | +39,2% | +38,6% | +37,8% |
 | **2024** | **+2,4%** | **+1,4%** | **−1,5%** |
 
-La ganancia de validación se concentra en 2022-2023. En **2024 las tres señales quedan cerca de cero**, el mismo año en que el cierre asincrónico deja de transmitir información (sección 2.4).
+La ganancia de validación se concentra en 2022-2023. En **2024 el sistema y ambos controles quedan cerca de cero**, el mismo año en que el cierre asincrónico deja de transmitir información (sección 2.4).
 
 ---
 
@@ -81,50 +82,50 @@ Las bases piden dos pruebas: **Diebold-Mariano** para la calidad de la predicci�
 
 Mejora de log-loss ×1000 frente a la frecuencia base de entrenamiento; entre paréntesis, t de Newey-West de la diferencia diaria de pérdidas.
 
-| Señal | Desarrollo p1 | Desarrollo p2 | Validación |
+| Modelo | Desarrollo p1 | Desarrollo p2 | Validación |
 |---|---|---|---|
-| Promedio | +1,68 (t 1,14) | +1,88 (t 1,01) | +3,80 (t 1,67) |
-| Logística | +0,75 (t 0,38) | +1,48 (t 0,68) | +5,29 (t 1,75) |
-| LSTM | −0,13 (t −0,07) | +0,73 (t 0,36) | +1,42 (t 0,75) |
+| **Sistema (promedio)** | +1,68 (t 1,14) | +1,88 (t 1,01) | +3,80 (t 1,67) |
+| Control: logística | +0,75 (t 0,38) | +1,48 (t 0,68) | +5,29 (t 1,75) |
+| Control: LSTM | −0,13 (t −0,07) | +0,73 (t 0,36) | +1,42 (t 0,75) |
 
-Las probabilidades del promedio y de la logística mejoran a la frecuencia base en los tres tramos, pero la mejora es pequeña y no alcanza significancia al 5% (t < 1,96). El acierto de dirección ronda 51-53%.
+Las probabilidades del sistema mejoran a la frecuencia base en los tres tramos (también las de la logística sola; el LSTM solo no lo hace en la parte 1), pero la mejora es pequeña y no alcanza significancia al 5% (t < 1,96). El acierto de dirección ronda 51-53%.
 
 ### Resultado económico (1 pb): bootstrap por bloques y Diebold-Mariano
 
 p unilateral de que la estrategia **no** sea mejor que la referencia (bootstrap de bloques de 20 días sobre la diferencia diaria; entre paréntesis, Diebold-Mariano con Newey-West). En negrita, p < 0,05.
 
-| Señal | Tramo | vs ±1 siempre | vs comprar siempre | vs no operar |
+| Estrategia | Tramo | vs ±1 siempre | vs comprar siempre | vs no operar |
 |---|---|---|---|---|
-| Promedio | Desarrollo p1 | **0,049** (0,050) | 0,142 (0,163) | 0,060 (0,064) |
-| Promedio | Validación | **0,013** (0,023) | 0,096 (0,092) | **0,030** (0,029) |
-| Logística | Desarrollo p1 | 0,086 (0,107) | 0,073 (0,079) | **0,019** (0,016) |
-| Logística | Validación | **0,014** (0,016) | 0,092 (0,087) | **0,042** (0,033) |
-| LSTM | Desarrollo p1 | 0,427 (0,417) | 0,337 (0,353) | 0,281 (0,291) |
-| LSTM | Validación | **0,022** (0,037) | 0,165 (0,170) | 0,073 (0,083) |
+| **Sistema** | Desarrollo p1 | **0,049** (0,050) | 0,142 (0,163) | 0,060 (0,064) |
+| **Sistema** | Validación | **0,013** (0,023) | 0,096 (0,092) | **0,030** (0,029) |
+| Control: logística | Desarrollo p1 | 0,086 (0,107) | 0,073 (0,079) | **0,019** (0,016) |
+| Control: logística | Validación | **0,014** (0,016) | 0,092 (0,087) | **0,042** (0,033) |
+| Control: LSTM | Desarrollo p1 | 0,427 (0,417) | 0,337 (0,353) | 0,281 (0,291) |
+| Control: LSTM | Validación | **0,022** (0,037) | 0,165 (0,170) | 0,073 (0,083) |
 
-En validación, las tres señales superan a operar siempre ±1 al 5%, y el promedio y la logística también superan a no operar. **Ninguna supera a comprar siempre al 5%** (p ≈ 0,09-0,17). En la parte 1 del desarrollo, que no se usó para elegir, el promedio y la logística mantienen resultados cercanos a la significancia; el LSTM no.
+En validación, el sistema supera al 5% a operar siempre ±1 (p = 0,013) y a no operar (p = 0,030), pero **no supera a comprar siempre al 5%** (p = 0,096). En la parte 1 del desarrollo, que no se usó para elegir, el sistema es el único de los tres que supera a operar siempre ±1 al 5% (p = 0,049) y queda cerca de la significancia contra no operar (p = 0,060). De los controles, la logística sola se comporta de forma parecida al sistema; el LSTM solo no es significativo en la parte 1.
 
 ### Placebo de dirección
 
 Sorteamos 2.000 veces una dirección al azar, manteniendo exactamente la exposición diaria de la estrategia (mismos días operados y mismos tamaños). Se reporta el % de sorteos que gana más que la estrategia real.
 
-| Señal | Desarrollo p1 | Desarrollo p2 | Validación |
+| Estrategia | Desarrollo p1 | Desarrollo p2 | Validación |
 |---|---|---|---|
-| Promedio | 2,3% | 0,0% | 1,6% |
-| Logística | 0,3% | 0,1% | 1,0% |
-| LSTM | 18,2% | 0,0% | 6,1% |
+| **Sistema** | 2,3% | 0,0% | 1,6% |
+| Control: logística | 0,3% | 0,1% | 1,0% |
+| Control: LSTM | 18,2% | 0,0% | 6,1% |
 
-Con el promedio y la logística, la dirección que elige el modelo es claramente mejor que el azar en los tres tramos. El LSTM solo lo es en el tramo donde se eligió.
+La dirección que elige el sistema es claramente mejor que el azar en los tres tramos (también la de la logística sola). El LSTM solo lo es en el tramo donde se eligió, por lo que su aporte al sistema está en cómo ordena los días y no en su dirección por sí sola.
 
 ### Sharpe deflactado
 
 El Sharpe deflactado (Bailey y López de Prado, 2014) corrige por haber elegido la mejor entre muchas configuraciones. Con las **~310 configuraciones** registradas en el proyecto, una estrategia sin señal alcanzaría solo por azar un Sharpe de 1,69 en tres años de validación.
 
-| Señal | Sharpe validación | P(Sharpe verdadero > 0) |
+| Estrategia | Sharpe validación | P(Sharpe verdadero > 0) |
 |---|---|---|
-| Promedio | 1,16 | 0,18 |
-| Logística | 1,15 | 0,18 |
-| LSTM | 0,82 | 0,07 |
+| **Sistema** | 1,16 | 0,18 |
+| Control: logística | 1,15 | 0,18 |
+| Control: LSTM | 0,82 | 0,07 |
 
 Corregido por el número de pruebas, **el resultado de validación no es suficientemente alto para descartar que sea el mejor de muchos intentos sin señal**. Las pruebas individuales (bootstrap y placebo) son favorables, pero no consideran cuántas configuraciones se probaron antes de llegar a esta.
 
@@ -132,7 +133,7 @@ Corregido por el número de pruebas, **el resultado de validación no es suficie
 
 ## 6.4 De dónde viene el resultado
 
-| Diagnóstico (validación, 1 pb) | Promedio | Logística | LSTM |
+| Diagnóstico (validación, 1 pb) | **Sistema** | Control: logística | Control: LSTM |
 |---|---|---|---|
 | Parte del resultado ganada en el gap nocturno (cierre *t* → apertura *t+1*) | 60% | 55% | 69% |
 | Resultado total | +7.311 pb | +6.987 pb | +5.146 pb |
@@ -141,23 +142,23 @@ Corregido por el número de pruebas, **el resultado de validación no es suficie
 Tres lecturas:
 
 1. **Más de la mitad de la ganancia se genera en la apertura del día siguiente**, la huella del cierre asincrónico (sección 2.4). Es legal según las reglas, pero ese canal casi desapareció desde 2024.
-2. **El resultado depende de pocos días.** Sin los 10 mejores días de validación, el promedio y la logística conservan cerca de una cuarta parte de la ganancia, y el LSTM queda en cero.
+2. **El resultado depende de pocos días.** Sin los 10 mejores días de validación, el sistema conserva cerca de una cuarta parte de la ganancia (la logística sola, parecido; el LSTM solo queda en cero).
 3. **Toda la ganancia viene de los días con exposición 3.** La sección 7 lo detalla.
 
 ---
 
 ## 6.5 Control: versión estricta
 
-La versión estricta (variables que cierran después de Santiago, rezagadas un día) muestra qué parte del resultado no depende del cierre asincrónico. Según la auditoría del sistema, en validación con 1 pb el promedio gana +7,3% y la logística +17,1%, ambos sin significancia contra ninguna referencia (Diebold-Mariano, p ≥ 0,30). Sin ese canal, el sistema prácticamente no tiene señal.
+La versión estricta (variables que cierran después de Santiago, rezagadas un día) muestra qué parte del resultado no depende del cierre asincrónico. Según la auditoría del sistema, en validación con 1 pb el sistema gana +7,3% y la logística sola +17,1%, ambos sin significancia contra ninguna referencia (Diebold-Mariano, p ≥ 0,30). Sin ese canal, el sistema prácticamente no tiene señal.
 
 ---
 
 ## 6.6 Conclusión
 
-- **El sistema supera a las referencias del torneo fuera de muestra**, de forma consistente entre tramos, incluida la parte del desarrollo que no participó en ninguna elección. El promedio y la logística son las señales más robustas; el LSTM solo, la más débil.
+- **El sistema supera a las referencias del torneo fuera de muestra**, de forma consistente entre tramos, incluida la parte del desarrollo que no participó en ninguna elección. Los controles muestran que la logística aporta la mayor parte de la dirección y que el LSTM solo es el componente más débil.
 - **La evidencia no es concluyente** una vez que se corrige por las ~310 configuraciones probadas, y no supera a comprar siempre con significancia.
 - **El resultado depende de un canal que se debilitó**: más de la mitad viene del cierre asincrónico, y 2024 ya fue prácticamente cero. Esperamos un desempeño menor en el tramo final y en el monitoreo en vivo que el de 2022-2023.
-- **Lo que el sistema hace bien es abstenerse:** opera solo en el 40% (promedio y logística) a 60% (LSTM) de días de mayor confianza y concentra el tamaño en ellos.
+- **Lo que el sistema hace bien es abstenerse:** opera solo en el 40% de días de mayor confianza y concentra el tamaño en ellos.
 
 Las implicancias para la operación en vivo y las limitaciones se discuten en la sección 9.
 
