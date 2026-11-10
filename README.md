@@ -50,8 +50,10 @@ Walk-forward, neto de carry y 1 pb de costo:
 │   └── base_usdclp 2.xlsx    ← base Bloomberg del laboratorio (cruda)
 ├── src/
 │   ├── preparar_base_v2.py        ← 1. limpieza y construcción de variables
-│   ├── modelo_adaptativo_colab.py ← 2. walk-forward completo: resultados, posiciones y gráficos
-│   └── senal_del_dia.py           ← 3. señal diaria para el monitoreo en vivo
+│   ├── modelo_adaptativo_colab.py ← 2. walk-forward completo: predicciones y posiciones diarias
+│   ├── evaluacion.py              ← 3. tablas y gráficos de las secciones 4, 6 y 7 del informe
+│   └── senal_del_dia.py           ← 4. señal diaria para el monitoreo en vivo
+├── resultados/               ← salidas de los pasos 2 y 3 (se pueden regenerar)
 └── informe/                  ← informe metodológico, secciones 0 a 9
     ├── README.md             ← resumen ejecutivo e índice
     └── figuras/
@@ -73,11 +75,14 @@ Clonar el repositorio y correr, en celdas:
 # 1. Base tratada (≈ 1 minuto)
 !python src/preparar_base_v2.py "datos/base_usdclp 2.xlsx" datos/procesados/
 
-# 2. Walk-forward completo y resultados (≈ 20 minutos en CPU; menos con GPU)
-!python src/modelo_adaptativo_colab.py datos/procesados/modelo_usdclp_desde_2001.xlsx
+# 2. Walk-forward completo (≈ 20 minutos en CPU; menos con GPU)
+!python src/modelo_adaptativo_colab.py datos/procesados/modelo_usdclp_desde_2001.csv
 
-# 3. Señal para la jornada siguiente
-!python src/senal_del_dia.py datos/procesados/modelo_usdclp_desde_2001.xlsx
+# 3. Tablas y gráficos del informe (≈ 1 minuto)
+!python src/evaluacion.py datos/procesados/modelo_usdclp_desde_2001.csv
+
+# 4. Señal para la jornada siguiente
+!python src/senal_del_dia.py datos/procesados/modelo_usdclp_desde_2001.csv
 ```
 
 Los scripts se corren con `!python` desde una celda. Si se pega su código directamente en una celda, `preparar_base_v2.py` falla, porque lee argumentos.
@@ -88,6 +93,7 @@ Los scripts se corren con `!python` desde una celda. Si se pega su código direc
 pip install -r requirements.txt
 python src/preparar_base_v2.py "datos/base_usdclp 2.xlsx" datos/procesados/
 python src/modelo_adaptativo_colab.py datos/procesados/modelo_usdclp_desde_2001.csv
+python src/evaluacion.py datos/procesados/modelo_usdclp_desde_2001.csv
 python src/senal_del_dia.py datos/procesados/modelo_usdclp_desde_2001.csv
 ```
 
@@ -103,14 +109,26 @@ python src/senal_del_dia.py datos/procesados/modelo_usdclp_desde_2001.csv
 **2. `modelo_adaptativo_colab.py`: walk-forward completo.**
 
 - **Qué hace:** reentrena el modelo 1 cada 21 días desde 2005, solo con el pasado, y aplica el modelo 2. Corre también el sistema base como control.
-- **Salidas, en la carpeta desde donde se ejecuta:**
+- **Salidas, en `resultados/`:**
+  - `posiciones_adaptativo.csv`: probabilidad, percentil de confianza, volatilidad relativa, exposición y resultado de cada día, para el adaptativo y el base;
+  - `predicciones_modelo1.csv`: probabilidad de cada componente (LSTM y logística) de ambos sistemas;
+  - `coeficientes_logistica.csv`: coeficientes de la logística en cada reentrenamiento;
   - `resultados_adaptativo.csv`: retorno, Sharpe, máxima caída y acierto por tramo;
-  - `posiciones_adaptativo.csv`: probabilidad, percentil de confianza, volatilidad relativa, exposición y resultado de cada día;
-  - gráficos `a1`-`a4`: resultado acumulado, coeficientes de la logística, último año y octubre-noviembre.
+  - gráficos `a1`-`a4`, de diagnóstico.
 - **Si Colab se desconecta:** el avance queda en `cache_adaptativo/`, así que al volver a correrlo retoma donde iba.
 - **Formato:** cada bloque `# %%` es una celda, así que también se puede abrir como notebook.
 
-**3. `senal_del_dia.py`: señal del día.** Toma el último día de la base tratada y entrega lo que piden las bases:
+**3. `evaluacion.py`: tablas y gráficos del informe.**
+
+- **Qué hace:** a partir de las salidas del paso 2, calcula todas las cifras de las secciones 4, 6 y 7:
+  - resultado por tramo y con distintos costos, frente a las tres referencias del torneo;
+  - bootstrap por bloques, Diebold-Mariano, placebo de dirección y Sharpe deflactado;
+  - log-loss y acierto en el quintil de mayor confianza;
+  - comparación adaptativo contra base y resultado por año;
+  - aporte de cada nivel de exposición, abstención y efecto del GARCH.
+- **Salidas, en `resultados/`:** `eval_*.csv` y los gráficos 4 y 6 del informe.
+
+**4. `senal_del_dia.py`: señal del día.** Toma el último día de la base tratada y entrega lo que piden las bases:
 
 ```
 Señal al cierre del 2026-06-17 (para la jornada siguiente, 2026-06-18):
@@ -125,11 +143,18 @@ Señal al cierre del 2026-06-17 (para la jornada siguiente, 2026-06-18):
   - `--hasta AAAA-MM-DD` calcula la señal como si esa fecha fuera el último día de la base;
   - `--sistema base` calcula la del sistema base.
 
+### Reproducibilidad
+
+- Las semillas del LSTM están fijas, así que el walk-forward es determinista **en un mismo tipo de equipo**. Entre CPU y GPU, las probabilidades del LSTM pueden diferir en el cuarto decimal.
+- Las cifras del informe se generaron en CPU; `resultados/` trae esas salidas.
+
 ### Operación diaria durante el monitoreo
 
 1. Reemplazar `datos/base_usdclp 2.xlsx` por la base actualizada del laboratorio. Si solo llegan los días nuevos, primero hay que agregarlos al final de la hoja `datos`.
 2. `python src/preparar_base_v2.py "datos/base_usdclp 2.xlsx" datos/procesados/`
 3. `python src/senal_del_dia.py datos/procesados/modelo_usdclp_desde_2001.csv`
+
+`senal_del_dia.py` usa el mismo código, parámetros y semillas que el walk-forward. Lo comprobamos: con la base cortada en fechas del test, entrega la misma probabilidad y exposición que `posiciones_adaptativo.csv`.
 
 El detalle, las reglas de operación y los riesgos están en la [sección 9.4 del informe](informe/09_limitaciones_y_operacion.md).
 
@@ -163,5 +188,3 @@ El detalle, las reglas de operación y los riesgos están en la [sección 9.4 de
 ## Datos
 
 Series diarias de Bloomberg entregadas por el laboratorio: USD/CLP (OHLC), monedas, commodities, bolsas, tasas locales y de EE.UU., volatilidades, posiciones de la banca y series macro. Todas son datos públicos de mercado. [confirmar con el laboratorio que la base puede publicarse en el repositorio]
-
-
