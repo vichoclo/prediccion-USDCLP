@@ -64,7 +64,7 @@ En octubre-noviembre de 2026 el sistema base operó 5 días y falló los 5 (−9
 
 En 2025-2026 el peso incorpora el movimiento global el mismo día (correlación con el rand del mismo día: 0,66) y los movimientos grandes tienden a revertir al día siguiente. Una logística entrenada con toda la historia desde 2001 sigue ponderando esas relaciones como en 2010-2019. Así se ven los coeficientes en cada reentrenamiento:
 
-![Gráfico 4](g4_coeficientes_logistica.png)
+![Gráfico 4](figuras/g4_coeficientes_logistica.png)
 
 | Coeficiente de la logística (promedio del año) | 2012 | 2018 | 2022 | 2024 | 2025 | 2026 |
 |---|---|---|---|---|---|---|
