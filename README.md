@@ -1,70 +1,169 @@
-# Informe metodológico · Predicción de la dirección del USD/CLP
+# ¿Sube o baja el dólar mañana? · Predicción de la dirección del USD/CLP
 
-Torneo Banco Itaú y FEN · Data Science en Finanzas: ¿Sube o baja el dólar mañana?
+Torneo Banco Itaú y FEN · Data Science en Finanzas · Facultad de Economía y Negocios, Universidad de Chile
 
 [completar: nombres de la pareja]
 
-## Resumen ejecutivo
+---
 
-**Estrategia.** El sistema tiene dos modelos.
+## Qué hace este repositorio
 
-- **Modelo 1:** estima la probabilidad de que convenga estar comprado en dólares al día siguiente, neto de carry. Es el promedio de dos componentes que usan las mismas 11 variables (cobre, oro, dólar global, rand, acciones emergentes, volatilidad emergente y calendario):
-  - un **LSTM** que mira los últimos 20 días;
-  - una **regresión logística**.
-- **Modelo 2:** convierte esa probabilidad en una exposición. Se abstiene cuando la confianza es baja, usa ±1 cuando es media y ±3 cuando es alta. Un **GARCH(1,1)** baja el 3 a 1 cuando la volatilidad esperada supera 1,5 veces su nivel normal.
+Construye una estrategia diaria sobre el USD/CLP en dos etapas (**sistema adaptativo**).
 
-**Qué lo hace adaptativo.** Ambos componentes se reentrenan cada 21 días y aprenden sobre todo del pasado reciente:
+**1. Modelo 1 · Dirección.** Estima la probabilidad de que mañana convenga estar comprado en dólares, es decir, que el dólar suba más que el carry. Es el promedio de dos componentes con las mismas 11 variables de mercado y calendario:
 
-- el LSTM usa toda la historia, pero cada día pesa la mitad que uno de un año después;
-- la logística usa solo los últimos 500 días (unos dos años).
+- un **LSTM** que mira los últimos 20 días, entrenado con toda la historia y con peso exponencial (un día de hace un año pesa la mitad);
+- una **regresión logística** entrenada solo con los últimos 500 días.
 
-Así los pesos siguen a las relaciones que cambian. Por ejemplo, el coeficiente del rand pasó de positivo a negativo en 2025, cuando el peso dejó de seguir con un día de retraso a las monedas emergentes. La versión anterior (**sistema base**: toda la historia con igual peso, reentrenada cada 126 días) se reporta como control.
+Ambos se reentrenan cada 21 días.
 
-**Resultado fuera de muestra (walk-forward, neto de carry y 1 pb de costo).**
+**2. Modelo 2 · Exposición.** Traduce esa probabilidad en una posición de **−3, −1, 0, +1 o +3** veces el nocional:
+
+- no opera si la confianza está bajo el percentil 60 de los últimos 250 días;
+- usa ±1 entre los percentiles 60 y 80;
+- usa ±3 sobre el percentil 80;
+- un **GARCH(1,1)** baja el 3 a 1 cuando la volatilidad esperada supera 1,5 veces su mediana reciente.
+
+Todas las decisiones usan solo información disponible al cierre de Santiago del día de la decisión. La versión anterior del modelo 1 (**sistema base**: toda la historia con igual peso, reentrenada cada 126 días) se incluye como control.
+
+## Resultado principal
+
+Walk-forward, neto de carry y 1 pb de costo:
 
 | Tramo | Sistema adaptativo | Sistema base (control) | Comprar siempre |
 |---|---|---|---|
-| Desarrollo, parte 1 · 2005-2014 | **+205,2%** (Sharpe 1,12) | +85,5% (0,58) | −2,9% |
-| Desarrollo, parte 2 · 2015-2021 | +137,4% (0,79) | **+284,3%** (1,17) | +20,5% |
-| Validación · 2022-2024 | +63,7% (0,80) | **+107,7%** (1,16) | +3,0% |
-| Test · 2025 a oct-2026 | **+13,4%** (0,47) | −18,5% (−0,81) | −4,4% |
-| Datos reales · 6-oct a 5-nov-2026 (22 días) | **−1,0%** | −9,8% | +0,4% |
+| 2005-2014 (no se usó para elegir) | **+205,2%** (Sharpe 1,12) | +85,5% | −2,9% |
+| 2015-2021 | +137,4% (0,79) | **+284,3%** | +20,5% |
+| Validación 2022-2024 | +63,7% (0,80) | **+107,7%** | +3,0% |
+| Test 2025 a oct-2026 | **+13,4%** (0,47) | −18,5% | −4,4% |
 
-**Por qué cambiamos de sistema, y con qué cautela.** El sistema base ganaba más en 2015-2024, pero perdió en 2025-2026: las relaciones que explotaba se debilitaron o se invirtieron. El adaptativo cuesta rentabilidad cuando las relaciones son estables y protege cuando cambian. Sumando 2006-2026, ambos rinden casi lo mismo: diferencia de +0,2 pb/día, p = 0,45.
+**Advertencia:** el adaptativo se eligió después de ver el test. Con la regla fijada al inicio habría ganado el base. El resumen ejecutivo, la significancia y las limitaciones están en el [informe](informe/README.md).
 
-**El adaptativo se eligió después de ver la validación, el test y los datos de octubre-noviembre.** Con la regla fijada al inicio (elegir en 2015-2021) habría ganado el sistema base. Por eso 2025-2026 no cuenta como un test limpio para el adaptativo. La evidencia más limpia a su favor es 2005-2014, un tramo que no se usó en ninguna elección: ahí rinde más del doble que el base.
+---
 
-**Significancia.** En validación y en el test, el adaptativo supera a operar siempre ±1 (bootstrap por bloques, p = 0,028 y 0,013). En 2005-2014 supera a las tres referencias (p ≤ 0,026) y en 2015-2021 supera a no operar (p = 0,024). En validación y en el test no supera a comprar siempre ni a no operar al 5%. Corregido por las ~349 configuraciones probadas (Sharpe deflactado), solo 2005-2014 da una probabilidad mayor a 0,5 de que el Sharpe verdadero sea positivo.
+## Estructura
 
-**Dónde está el valor.** El sistema no opera en el ~60% de los días, y en esos días su dirección no es mejor que una moneda. Los días con exposición 3 (15-20% del total) explican casi todo el resultado. En el test, el adaptativo usó menos ese tamaño (15% de los días, contra 17% del base) y esos días ganaron. Los del base perdieron.
+```
+├── README.md                 ← este archivo: qué hace el repositorio y cómo usarlo
+├── requirements.txt
+├── datos/
+│   └── base_usdclp 2.xlsx    ← base Bloomberg del laboratorio (cruda)
+├── src/
+│   ├── preparar_base_v2.py        ← 1. limpieza y construcción de variables
+│   ├── modelo_adaptativo_colab.py ← 2. walk-forward completo: resultados, posiciones y gráficos
+│   └── senal_del_dia.py           ← 3. señal diaria para el monitoreo en vivo
+└── informe/                  ← informe metodológico, secciones 0 a 9
+    ├── README.md             ← resumen ejecutivo e índice
+    └── figuras/
+```
 
-**Limitaciones.**
+---
 
-1. Elegimos el sistema mirando el tramo en que gana. La única evaluación sin contaminación es el monitoreo en vivo, con los parámetros congelados desde el 9 de noviembre de 2026.
-2. El resultado depende de pocos días: sin los 10 mejores días del test, el adaptativo pierde 25%.
-3. Las probabilidades del adaptativo están peor calibradas que la frecuencia base en el test.
-4. El resultado varía con las semillas del LSTM.
-5. Las noticias locales, como la intervención del Banco Central en julio de 2022, quedan fuera del alcance de las variables.
+## Cómo usarlo
 
-## Índice
+### En Google Colab
 
-| # | Sección | Estado |
-|---|---|---|
-| 0 | [Problema, reglas y criterio de evaluación](00_problema_y_reglas.md) | borrador |
-| 1 | [Datos y limpieza](01_datos_y_limpieza.md) | borrador |
-| 2 | [Análisis exploratorio y selección de variables](02_analisis_exploratorio_y_variables.md) | borrador |
-| 3 | [Protocolo de validación](03_protocolo_validacion.md) | borrador |
-| 4 | [Modelo 1: dirección (adaptativo)](04_modelo1_direccion.md) | borrador |
-| 5 | [Modelo 2: exposición (−3, −1, 0, +1, +3)](05_modelo2_exposicion.md) | borrador |
-| 6 | [Resultados fuera de muestra y significancia](06_resultados_y_significancia.md) | borrador |
-| 7 | [Lectura de la convicción](07_lectura_conviccion.md) | borrador |
-| 8 | [Modelos probados y descartados](08_modelos_descartados.md) | borrador |
-| 9 | [Limitaciones, riesgos y operación en vivo](09_limitaciones_y_operacion.md) | borrador |
+Clonar el repositorio y correr, en celdas:
 
-## Convenciones del informe
+```python
+!git clone https://github.com/vichoclo/prediccion-USDCLP.git
+%cd prediccion-USDCLP
+!pip install -q -r requirements.txt
 
-- Retornos en puntos base (pb), logarítmicos.
-- *t* es el día de la decisión (al cierre de Santiago); *t+1* es la jornada que se predice.
-- Salvo que se indique otra cosa, las cifras son netas de carry con 1 pb de costo por unidad de cambio de exposición.
-- El sistema opera desde febrero de 2006: antes, el GARCH y el percentil de confianza todavía no tienen la historia que necesitan.
-- Los textos entre corchetes `[completar: …]` o `[confirmar: …]` marcan datos pendientes.
+# 1. Base tratada (≈ 1 minuto)
+!python src/preparar_base_v2.py "datos/base_usdclp 2.xlsx" datos/procesados/
+
+# 2. Walk-forward completo y resultados (≈ 20 minutos en CPU; menos con GPU)
+!python src/modelo_adaptativo_colab.py datos/procesados/modelo_usdclp_desde_2001.xlsx
+
+# 3. Señal para la jornada siguiente
+!python src/senal_del_dia.py datos/procesados/modelo_usdclp_desde_2001.xlsx
+```
+
+Los scripts se corren con `!python` desde una celda. Si se pega su código directamente en una celda, `preparar_base_v2.py` falla, porque lee argumentos.
+
+### En un computador
+
+```bash
+pip install -r requirements.txt
+python src/preparar_base_v2.py "datos/base_usdclp 2.xlsx" datos/procesados/
+python src/modelo_adaptativo_colab.py datos/procesados/modelo_usdclp_desde_2001.csv
+python src/senal_del_dia.py datos/procesados/modelo_usdclp_desde_2001.csv
+```
+
+### Qué hace cada paso
+
+**1. `preparar_base_v2.py`: de la base cruda a la base tratada.**
+
+- **Entrada:** la base cruda de Bloomberg (hoja `datos`).
+- **Salida:** en `datos/procesados/`, tres cortes (desde 2001, 2010 y 2018) en `.csv` y `.xlsx`, con 105 columnas: variables `x_*`, calendario `cal_*`, objetivo `y_*` y carry. El sistema usa `modelo_usdclp_desde_2001`. El `.xlsx` trae además el diccionario de variables.
+- **Opcional:** `--ipsa ipsa.csv` completa el IPSA después del 31-ago-2026. El sistema no lo usa.
+- **Detalle:** [sección 1 del informe](informe/01_datos_y_limpieza.md).
+
+**2. `modelo_adaptativo_colab.py`: walk-forward completo.**
+
+- **Qué hace:** reentrena el modelo 1 cada 21 días desde 2005, solo con el pasado, y aplica el modelo 2. Corre también el sistema base como control.
+- **Salidas, en la carpeta desde donde se ejecuta:**
+  - `resultados_adaptativo.csv`: retorno, Sharpe, máxima caída y acierto por tramo;
+  - `posiciones_adaptativo.csv`: probabilidad, percentil de confianza, volatilidad relativa, exposición y resultado de cada día;
+  - gráficos `a1`-`a4`: resultado acumulado, coeficientes de la logística, último año y octubre-noviembre.
+- **Si Colab se desconecta:** el avance queda en `cache_adaptativo/`, así que al volver a correrlo retoma donde iba.
+- **Formato:** cada bloque `# %%` es una celda, así que también se puede abrir como notebook.
+
+**3. `senal_del_dia.py`: señal del día.** Toma el último día de la base tratada y entrega lo que piden las bases:
+
+```
+Señal al cierre del 2026-06-17 (para la jornada siguiente, 2026-06-18):
+  dirección: VENDER dólar | p = 0,430 | confianza (percentil) = 0,94 | vol. relativa = 1,14
+  exposición sugerida: −3
+  componentes: p LSTM = 0,474 · p logística = 0,386   [sistema adaptativo]
+```
+
+- **Modelos guardados:** la primera corrida entrena los modelos vigentes (unos minutos) y los guarda en `modelos_vigentes_adaptativo.pt`. Las siguientes los cargan y tardan segundos.
+- **Bitácora:** cada corrida agrega una fila a `bitacora_senales.csv`.
+- **Opciones:**
+  - `--hasta AAAA-MM-DD` calcula la señal como si esa fecha fuera el último día de la base;
+  - `--sistema base` calcula la del sistema base.
+
+### Operación diaria durante el monitoreo
+
+1. Reemplazar `datos/base_usdclp 2.xlsx` por la base actualizada del laboratorio. Si solo llegan los días nuevos, primero hay que agregarlos al final de la hoja `datos`.
+2. `python src/preparar_base_v2.py "datos/base_usdclp 2.xlsx" datos/procesados/`
+3. `python src/senal_del_dia.py datos/procesados/modelo_usdclp_desde_2001.csv`
+
+El detalle, las reglas de operación y los riesgos están en la [sección 9.4 del informe](informe/09_limitaciones_y_operacion.md).
+
+---
+
+## Informe
+
+| # | Sección |
+|---|---|
+| — | [Resumen ejecutivo e índice](informe/README.md) |
+| 0 | [Problema, reglas y criterio de evaluación](informe/00_problema_y_reglas.md) |
+| 1 | [Datos y limpieza](informe/01_datos_y_limpieza.md) |
+| 2 | [Análisis exploratorio y selección de variables](informe/02_analisis_exploratorio_y_variables.md) |
+| 3 | [Protocolo de validación](informe/03_protocolo_validacion.md) |
+| 4 | [Modelo 1: dirección (adaptativo)](informe/04_modelo1_direccion.md) |
+| 5 | [Modelo 2: exposición](informe/05_modelo2_exposicion.md) |
+| 6 | [Resultados fuera de muestra y significancia](informe/06_resultados_y_significancia.md) |
+| 7 | [Lectura de la convicción](informe/07_lectura_conviccion.md) |
+| 8 | [Modelos probados y descartados](informe/08_modelos_descartados.md) |
+| 9 | [Limitaciones, riesgos y operación en vivo](informe/09_limitaciones_y_operacion.md) |
+
+## Entregables exigidos por las bases
+
+| Entregable | Dónde |
+|---|---|
+| Señal del día (dirección, probabilidad, posición sugerida) | `src/senal_del_dia.py` · [sección 9.4](informe/09_limitaciones_y_operacion.md) |
+| Curva de resultado neto de costos vs. las tres referencias | [Sección 6](informe/06_resultados_y_significancia.md), gráfico 6 |
+| Lectura de la convicción (días de máxima exposición y de abstención) | [Sección 7](informe/07_lectura_conviccion.md) |
+| Informe metodológico | [`informe/`](informe/README.md) |
+
+## Datos
+
+Series diarias de Bloomberg entregadas por el laboratorio: USD/CLP (OHLC), monedas, commodities, bolsas, tasas locales y de EE.UU., volatilidades, posiciones de la banca y series macro. Todas son datos públicos de mercado. [confirmar con el laboratorio que la base puede publicarse en el repositorio]
+
+## Licencia
+
+[completar: licencia abierta del repositorio, por ejemplo MIT]
