@@ -60,7 +60,7 @@ Todas las cifras son fuera de muestra respecto del modelo 1: cada día se predic
 | Operar siempre ±1 (dirección del base) | +6,5% | +101,4% | +11,4% | −10,0% |
 | No operar nunca | 0% | 0% | 0% | 0% |
 
-![Gráfico 6](g6_resultado_acumulado.png)
+![Gráfico 6](figuras/g6_resultado_acumulado.png)
 
 El gráfico muestra dos estrategias que llegan a un nivel parecido por caminos distintos. El adaptativo gana sobre todo en 2008-2010 y en 2025. El base gana en 2015-2024, cuando el cierre asincrónico todavía transmitía información y las relaciones eran estables.
 
