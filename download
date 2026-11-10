@@ -1,9 +1,6 @@
-# Archivos que generan los scripts: se reconstruyen corriendo el código
+# Archivos que generan los scripts y que no hace falta versionar
 datos/procesados/
 cache_adaptativo/
 *.pt
-resultados_adaptativo*.csv
-posiciones_adaptativo*.csv
-a[1-4]_*.png
 __pycache__/
 .ipynb_checkpoints/
