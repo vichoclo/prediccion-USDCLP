@@ -1,9 +1,14 @@
 """
 preparar_base_v2.py — Base USD/CLP desde 2001-08 para modelar (Torneo Itaú-FEN).
-Copia de claude/preparar_base_v2.py del proyecto (con los parches de la auditoría 2026-10-26).
+
+Lee la base cruda de Bloomberg (hoja 'datos'), la limpia y construye las variables del
+modelo (x_*), el calendario (cal_*), el objetivo (y_*) y el carry. Detalle: informe, sección 1.
 
 Uso:
-    python preparar_base_v2.py "base_usdclp 2.xlsx" carpeta_salida/ [--ipsa ipsa.csv]
+    python src/preparar_base_v2.py "datos/base_usdclp 2.xlsx" datos/procesados/ [--ipsa ipsa.csv]
+
+Salida: modelo_usdclp_desde_{2001,2010,2018}.csv y .xlsx en la carpeta indicada.
+El sistema usa modelo_usdclp_desde_2001.
 """
 import argparse
 import warnings

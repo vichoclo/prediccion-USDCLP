@@ -1,26 +1,29 @@
 # %% [markdown]
 # # Sistema ADAPTATIVO · LSTM + logística + GARCH · Torneo Itaú-FEN (USD/CLP)
 #
-# Misma arquitectura que el sistema final, con una diferencia: el **modelo 1 aprende solo de
-# la historia reciente**, así que sus pesos siguen a las relaciones que cambian (rand,
-# autocorrelación del peso, efecto viernes) en vez de arrastrar 20 años de historia.
+# Walk-forward completo del sistema del informe. El **modelo 1 aprende sobre todo de la
+# historia reciente**, así que sus pesos siguen a las relaciones que cambian (rand,
+# autocorrelación del peso, efecto viernes) en vez de arrastrar 20 años de historia. Se corre
+# también el **sistema base** (la versión anterior, con toda la historia) como control.
 #
-# | Pieza | Sistema final (base) | Sistema adaptativo |
+# | Pieza | Sistema base (control) | Sistema adaptativo (oficial) |
 # |---|---|---|
 # | LSTM L20 (5 semillas) | toda la historia, igual peso, cada 126 días | toda la historia con peso exponencial (vida media 1 año), cada 21 días |
 # | Logística C = 0,05 | toda la historia, cada 126 días | últimos 500 días (≈ 2 años), cada 21 días |
 # | Señal | promedio LSTM + logística | igual |
 # | Modelo 2: percentil de confianza (u1 0,6 / u3 0,8) + tope GARCH 1,5 | igual | igual |
 #
-# Ojo: la combinación por defecto (LSTM exponencial + logística ventana 500) se fijó después de
-# ver validación y 2025-26. Su evaluación honesta son los datos posteriores al 6-nov-2026;
-# no volver a ajustar ventanas ni vidas medias con esos datos.
+# Advertencia: la combinación (LSTM exponencial + logística ventana 500) se fijó después de ver
+# validación y 2025-26 (informe, sección 3.5). Su evaluación limpia son los datos posteriores
+# al 9-nov-2026; los parámetros quedan congelados.
 #
-# **Uso en Colab:** Entorno de ejecución → GPU (T4). Correr las celdas en orden; la celda 1
-# pide subir la base tratada (`modelo_usdclp_desde_2001.csv` o .xlsx). El walk-forward guarda
-# su avance en `cache_adaptativo/`; si Colab se desconecta, al volver a correr retoma donde iba
-# (para no perderlo al cerrar la sesión, copiar esa carpeta a Drive).
-# Tiempo aprox.: LSTM exponencial ~20 min en CPU (menos con GPU), logística 1 min, base 5 min.
+# **Uso:** desde la raíz del repositorio,
+#   python src/modelo_adaptativo_colab.py datos/procesados/modelo_usdclp_desde_2001.csv
+# (en Colab, con `!python`). También se puede abrir como notebook: cada `# %%` es una celda.
+# Las salidas quedan en `resultados/`. El walk-forward guarda su avance en `cache_adaptativo/`;
+# si Colab se desconecta, al volver a correr retoma donde iba.
+# Tiempo aprox.: ~20 min en CPU (menos con GPU). Luego, `python src/evaluacion.py` reproduce
+# las tablas y gráficos de las secciones 4, 6 y 7 del informe.
 
 # %% 0 · instalación y configuración
 # !pip -q install arch holidays          # ← descomentar en Colab
@@ -44,7 +47,7 @@ ESTRICTA = False        # True: rezaga 1 día las variables que cierran después
 # Cómo se adapta cada componente del modelo 1 (se pueden elegir por separado):
 #   "ventana"     → solo los últimos VENTANA_M1 días, reentrenando cada REAJUSTE_M1
 #   "exponencial" → toda la historia, con peso 0,5^(antigüedad / VIDA_MEDIA), cada REAJUSTE_M1
-#   "expansiva"   → toda la historia con igual peso, cada 126 días (= sistema final)
+#   "expansiva"   → toda la historia con igual peso, cada 126 días (= sistema base)
 # El LSTM necesita muchos datos: con solo 500 días se degrada; con peso exponencial conserva
 # la historia y aun así sigue al régimen reciente. La logística (11 pesos) sí funciona con 500.
 MODO_LSTM = "exponencial"
@@ -52,7 +55,7 @@ MODO_LOGIT = "ventana"
 VENTANA_M1 = 500        # días de entrenamiento en modo ventana
 VIDA_MEDIA = 250        # días hábiles, modo exponencial (peso 1/2 a 1 año, ≈ equivalente a ventana de 2 años)
 REAJUSTE_M1 = 21        # cada cuántos días se reentrena el modelo adaptativo
-COMPARAR_BASE = True    # corre también el sistema final (expansivo, cada 126 días) para comparar
+COMPARAR_BASE = True    # corre también el sistema base (expansivo, cada 126 días) como control
 
 VARS_NUCLEO = ["x_cobre_lme_ret", "x_cobre_comex_ret", "x_oro_ret", "x_dxy_ret", "x_bbdxy_ret",
                "x_dxy_mom20", "x_usdzar_ret", "x_mxef_ret", "x_vol_em_dif",
@@ -66,8 +69,11 @@ C_LOGIT = 0.05
 VENTANA_GARCH, REAJUSTE_GARCH, VENTANA_PCT = 1000, 21, 250
 U1, U3, TOPE_VOL, VOL_CERO = (0.8, 1.01, 1.5, 2.0) if ESTRICTA else (0.6, 0.8, 1.5, np.inf)
 COSTO = 1.0             # pb por unidad de cambio de exposición
-TRAMOS = {"desarrollo": ("2015-01-01", "2021-12-31"), "validacion": ("2022-01-01", "2024-12-31"),
-          "test_2025_26": ("2025-01-01", "2026-10-05"), "oct_nov_2026": ("2026-10-06", "2026-12-31")}
+TRAMOS = {"desarrollo_p1": ("2005-01-01", "2014-12-31"), "desarrollo_p2": ("2015-01-01", "2021-12-31"),
+          "validacion": ("2022-01-01", "2024-12-31"), "test": ("2025-01-01", "2026-10-05"),
+          "datos_nuevos": ("2026-10-06", "2026-12-31")}       # tramos del informe (sección 3.2)
+SALIDA = "resultados"   # carpeta de salida (CSV y gráficos)
+os.makedirs(SALIDA, exist_ok=True)
 CACHE = "cache_adaptativo"
 os.makedirs(CACHE, exist_ok=True)
 DISP = "cuda" if torch.cuda.is_available() else "cpu"
@@ -122,7 +128,7 @@ FECHAS, T = d.index, len(d)
 print(f"Base: {FECHAS[0].date()} → {FECHAS[-1].date()} ({T} días). Último día con resultado: "
       f"{d['y_ret_neto_pb'].dropna().index[-1].date()}")
 
-# %% 2 · piezas del modelo 1 (iguales al sistema final, con pesos por observación)
+# %% 2 · piezas del modelo 1 (las mismas del sistema base, con pesos por observación)
 
 
 def escalador(Xtr):
@@ -280,10 +286,13 @@ P_ad["p"] = P_ad[["p_lstm", "p_logit"]].mean(axis=1, skipna=False)
 SENALES = {"Adaptativo": P_ad}
 if COMPARAR_BASE:
     P_base, COEF_base = correr("expansiva", con_lstm=True)
-    SENALES["Base (sistema final)"] = P_base
+    SENALES["Base (control)"] = P_base
 print("Modelo 1 listo.")
+pd.concat({k: v for k, v in SENALES.items()}, axis=1).to_csv(f"{SALIDA}/predicciones_modelo1.csv", float_format="%.6g")
+pd.concat({"Adaptativo": COEF_ad, **({"Base (control)": COEF_base} if COMPARAR_BASE else {})}, axis=1).to_csv(
+    f"{SALIDA}/coeficientes_logistica.csv", float_format="%.6g")
 
-# %% 4 · modelo 2: GARCH(1,1) + percentil de confianza (igual al sistema final)
+# %% 4 · modelo 2: GARCH(1,1) + percentil de confianza (igual para ambos sistemas)
 
 
 def garch_walkforward(r):
@@ -351,14 +360,14 @@ pd.set_option("display.width", 250)
 for c in ("ret_%", "sharpe", "max_caida_%", "acierto_dir_%"):
     print(f"\n{c}")
     print(R.pivot(index="senal", columns="tramo", values=c)[list(TRAMOS)].to_string())
-R.to_csv(f"resultados_adaptativo{'_estricta' if ESTRICTA else ''}.csv", index=False)
+R.to_csv(f"{SALIDA}/resultados_adaptativo{'_estricta' if ESTRICTA else ''}.csv", index=False)
 
 # %% 5 · gráficos
 TIT = "versión estricta" if ESTRICTA else "versión reglas"
 
 
 def sombrear(ax):
-    for (t, (a, b)), col in zip(TRAMOS.items(), ["#f4f3f0", "#e8f0fb", "#fbeee6", "#fde2e1"]):
+    for (t, (a, b)), col in zip(TRAMOS.items(), ["#fcfcfb", "#f4f3f0", "#e8f0fb", "#fbeee6", "#fde2e1"]):
         ax.axvspan(pd.Timestamp(a), min(pd.Timestamp(b), FECHAS[-1]), color=col, lw=0, zorder=0)
 
 
@@ -371,15 +380,15 @@ def estilo(ax):
 fig, ax = plt.subplots(figsize=(13, 5))
 sombrear(ax)
 for nombre, col in zip(SENALES, [C["azul"], C["gris"]]):
-    g = SIS[nombre].resultado_pb.loc[TRAMOS["desarrollo"][0]:].fillna(0)
+    g = SIS[nombre].resultado_pb.loc[TRAMOS["desarrollo_p1"][0]:].fillna(0)
     ax.plot(g.index, (np.exp(g.cumsum() / 1e4) - 1) * 100, color=col, lw=1.8 if nombre == "Adaptativo" else 1.4, label=nombre)
 ax.axhline(0, color=C["tinta2"], lw=0.8)
 ax.set_ylabel("Retorno acumulado (%)")
-ax.set_title(f"Gráfico A1 · Retorno acumulado neto, adaptativo vs base ({TIT}) · fondos: desarrollo, validación, test, oct-nov",
+ax.set_title(f"Gráfico A1 · Retorno acumulado neto, adaptativo vs base ({TIT}) · fondos: desarrollo p1 y p2, validación, test, datos nuevos",
              loc="left", fontweight="bold", fontsize=11)
 ax.legend(frameon=False)
 estilo(ax)
-fig.tight_layout(); fig.savefig("a1_retorno_acumulado.png", dpi=150); plt.show()
+fig.tight_layout(); fig.savefig(f"{SALIDA}/a1_retorno_acumulado.png", dpi=150); plt.show()
 
 # g2: cómo se mueven los pesos de la logística
 claves = ["x_usdzar_ret", "x_cobre_lme_ret", "x_dxy_ret", "x_mxef_ret", "cal_viernes", "x_vol_em_dif"]
@@ -387,14 +396,14 @@ fig, axes = plt.subplots(2, 3, figsize=(14, 6.5), sharex=True)
 for ax, v in zip(axes.flat, claves):
     ax.step(COEF_ad.index, COEF_ad[v], where="post", color=C["azul"], lw=1.4, label="Adaptativo")
     if COMPARAR_BASE:
-        ax.step(COEF_base.index, COEF_base[v], where="post", color=C["gris"], lw=1.4, label="Base expansiva")
+        ax.step(COEF_base.index, COEF_base[v], where="post", color=C["gris"], lw=1.4, label="Base (control)")
     ax.axhline(0, color=C["tinta2"], lw=0.8)
     ax.set_title(v, fontsize=10)
     estilo(ax)
 axes[0, 0].legend(frameon=False, fontsize=8)
 fig.suptitle("Gráfico A2 · Coeficiente de la logística en cada reentrenamiento (variables estandarizadas)",
              x=0.01, ha="left", fontweight="bold")
-fig.tight_layout(); fig.savefig("a2_coeficientes.png", dpi=150); plt.show()
+fig.tight_layout(); fig.savefig(f"{SALIDA}/a2_coeficientes.png", dpi=150); plt.show()
 
 # g3: último año — volatilidad GARCH y exposición del adaptativo
 S = SIS["Adaptativo"].iloc[-250:]
@@ -406,19 +415,19 @@ col = {-3: "#c23b3a", -1: "#f2a6a5", 0: "#d9d8d4", 1: "#86b6ef", 3: "#1c5cab"}
 a1.bar(S.index, S.exposicion, color=[col[int(v)] for v in S.exposicion], width=1)
 a1.set_yticks([-3, -1, 0, 1, 3]); a1.set_title("Exposición del adaptativo (azul compra, rojo venta)", loc="left", fontsize=10); estilo(a1)
 fig.suptitle("Gráfico A3 · Último año: GARCH y posiciones", x=0.01, ha="left", fontweight="bold")
-fig.tight_layout(); fig.savefig("a3_ultimo_anio.png", dpi=150); plt.show()
+fig.tight_layout(); fig.savefig(f"{SALIDA}/a3_ultimo_anio.png", dpi=150); plt.show()
 
 # g4: zoom oct-nov 2026 día a día
-a, b = TRAMOS["oct_nov_2026"]
+a, b = TRAMOS["datos_nuevos"]
 fig, ax = plt.subplots(figsize=(12, 4.5))
 for nombre, cl in zip(SENALES, [C["azul"], C["gris"]]):
     g = SIS[nombre].resultado_pb.loc[a:b].dropna()
     ax.plot(g.index, g.cumsum(), color=cl, lw=2 if nombre == "Adaptativo" else 1.4, marker="o", ms=3, label=nombre)
 ax.axhline(0, color=C["tinta2"], lw=0.8)
 ax.set_ylabel("pb acumulados"); ax.legend(frameon=False)
-ax.set_title("Gráfico A4 · Fuera de muestra en vivo (oct-nov 2026), resultado acumulado", loc="left", fontweight="bold")
+ax.set_title("Gráfico A4 · Datos nuevos (desde el 6-oct-2026), resultado acumulado", loc="left", fontweight="bold")
 ax.xaxis.set_major_formatter(mdates.DateFormatter("%d-%b")); estilo(ax)
-fig.tight_layout(); fig.savefig("a4_oct_nov.png", dpi=150); plt.show()
+fig.tight_layout(); fig.savefig(f"{SALIDA}/a4_oct_nov.png", dpi=150); plt.show()
 
 # %% 6 · señal para la próxima jornada
 
@@ -444,5 +453,6 @@ for nombre in SENALES:
     print(f"  percentil de confianza = {S.pct_conf.iloc[-1]:.2f}  ·  vol. relativa GARCH = {S.vol_rel.iloc[-1]:.2f}")
     print(f"  EXPOSICIÓN = {e:+d}  ({'compra' if e > 0 else 'venta' if e < 0 else 'fuera'} USD)")
 pd.concat({k: v for k, v in SIS.items() if " · " not in k}, axis=1).to_csv(
-    f"posiciones_adaptativo{'_estricta' if ESTRICTA else ''}.csv", float_format="%.5f")
-print("\nGuardado: resultados_adaptativo*.csv, posiciones_adaptativo*.csv y gráficos a1-a4.")
+    f"{SALIDA}/posiciones_adaptativo{'_estricta' if ESTRICTA else ''}.csv", float_format="%.5f")
+print(f"\nGuardado en {SALIDA}/: resultados_adaptativo.csv, posiciones_adaptativo.csv, predicciones_modelo1.csv, "
+      f"coeficientes_logistica.csv y gráficos a1-a4.")
