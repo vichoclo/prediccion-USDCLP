@@ -229,26 +229,33 @@ plt.rcParams.update({"font.size": 10, "axes.edgecolor": "#c3c2b7", "axes.labelco
                      "xtick.color": "#52514e", "ytick.color": "#52514e", "figure.facecolor": "#fcfcfb",
                      "axes.facecolor": "#fcfcfb"})
 AZ, NA, GR, TX = "#2a78d6", "#eb6834", "#8a8984", "#0b0b0b"
-fig, ax = plt.subplots(figsize=(13, 5.2))
-nombres = {"p1_05_14": "Desarrollo p1", "p2_15_21": "Desarrollo p2", "val_22_24": "Validación", "test_25_26": "Test"}
-for i, (t, (a, b)) in enumerate(TRAMOS.items()):
-    ax.axvspan(pd.Timestamp(a), pd.Timestamp(b), color="#f0efec" if i % 2 == 0 else "#fcfcfb", lw=0, zorder=0)
-    ax.text(pd.Timestamp(a) + pd.Timedelta(days=40), 1.0, nombres[t], transform=ax.get_xaxis_transform(),
-            va="top", fontsize=9, color="#52514e")
-g_ad = ga.loc["2005-06":"2026-10-05"].fillna(0); g_b = gb.loc["2005-06":"2026-10-05"].fillna(0)
-y = SEN["adaptativo"].y.loc[g_ad.index].fillna(0)
-for g, c, lab, lw, ls in ((g_ad, AZ, "Sistema adaptativo", 2, "-"), (g_b, NA, "Sistema base (control)", 1.6, "-"),
-                          (y, GR, "Comprar siempre", 1.4, ":")):
-    s = g.cumsum() / 100
-    ax.plot(s.index, s, color=c, lw=lw, ls=ls, label=lab, zorder=3)
-    ax.annotate(lab, xy=(s.index[-1], s.iloc[-1]), xytext=(6, 0), textcoords="offset points", va="center", fontsize=9, color=TX)
+# Gráfico 6: resultado acumulado vs referencias (arriba) y exposición diaria del adaptativo (abajo)
+D_ad = SEN["adaptativo"]
+idx6 = D_ad.loc["2006-01-01":"2026-10-05"].index
+e_ad = D_ad.exposicion.reindex(idx6)
+y6 = D_ad.y.reindex(idx6)
+curvas = {"Sistema adaptativo": (e_ad, AZ, "-", 2.0),
+          "Sistema base (control)": (SEN["base"].exposicion.reindex(idx6), NA, "-", 1.3),
+          "Comprar siempre": (pd.Series(1.0, idx6), GR, ":", 1.3),
+          "Operar siempre ±1": (np.sign(D_ad.p.reindex(idx6) - 0.5), "#52514e", "--", 1.3),
+          "No operar nunca": (pd.Series(0.0, idx6), "#c3c2b7", "-", 1.3)}
+fig, (ax, ax2) = plt.subplots(2, 1, figsize=(13, 6.5), sharex=True, gridspec_kw={"height_ratios": [3, 1]})
+for lab, (e, c, ls, lw) in curvas.items():
+    g = resultado(e, y6, 1).fillna(0).cumsum() / 100
+    ax.plot(g.index, g, color=c, ls=ls, lw=lw, label=lab)
+for t, (a, b) in TRAMOS.items():
+    if pd.Timestamp(a) > idx6[0]:
+        ax.axvline(pd.Timestamp(a), color="#c3c2b7", lw=0.8)
 ax.axhline(0, color="#52514e", lw=0.8)
-ax.set_ylabel("Resultado acumulado neto (puntos %, suma de retornos log)")
-ax.grid(axis="y", color="#e4e3df", lw=0.6); ax.spines[["top", "right"]].set_visible(False)
-ax.xaxis.set_major_locator(mdates.YearLocator(2)); ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
-ax.set_xlim(pd.Timestamp("2005-01-01"), pd.Timestamp("2028-06-01"))
-ax.legend(loc="upper left", frameon=False, bbox_to_anchor=(0, 0.93))
-ax.set_title("Gráfico 6 · Resultado acumulado neto de carry y 1 pb de costo, 2005-2026", loc="left", fontweight="bold", color=TX)
+ax.set_ylabel("Resultado acumulado (puntos %)")
+ax.set_title("Gráfico 6 · Resultado acumulado neto de carry y 1 pb de costo · 2006-2026", loc="left", fontweight="bold", color=TX)
+ax.legend(frameon=False, ncol=3, fontsize=9)
+col_e = {-3: "#c23b3a", -1: "#f2a6a5", 0: "#d9d8d4", 1: "#86b6ef", 3: "#1c5cab"}
+ax2.bar(e_ad.index, e_ad, color=[col_e[int(v)] for v in e_ad], width=1.5)
+ax2.set_yticks([-3, -1, 0, 1, 3]); ax2.set_ylabel("Exposición")
+ax2.set_title("Exposición del sistema adaptativo (azul: compra de dólar · rojo: venta)", loc="left", fontsize=10)
+for x in (ax, ax2):
+    x.spines[["top", "right"]].set_visible(False); x.grid(axis="y", color="#e4e3df", lw=0.6)
 fig.tight_layout(); fig.savefig(f"{RES}/g6_resultado_acumulado.png", dpi=150)
 
 ruta_coef = f"{RES}/coeficientes_logistica.csv"
