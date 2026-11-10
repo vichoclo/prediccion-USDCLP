@@ -208,7 +208,7 @@ Con la base actualizada que entregó el laboratorio (días nuevos hasta el 6 de 
 | Comprar siempre | +0,4% |
 | No operar | 0% |
 
-Con 22 días, ninguna diferencia es distinguible del azar. Estos días motivaron la revisión del modelo 1 (sección 4.5), así que tampoco son una evaluación independiente del adaptativo. Script: `test_fuera_de_muestra.py`.
+Con 22 días, ninguna diferencia es distinguible del azar. Estos días motivaron la revisión del modelo 1 (sección 4.5), así que tampoco son una evaluación independiente del adaptativo.
 
 ---
 
