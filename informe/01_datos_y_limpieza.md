@@ -261,7 +261,7 @@ Estos resultados surgieron durante la limpieza y determinaron decisiones posteri
 ## 1.15 Cómo reproducir
 
 ```bash
-python preparar_base_v2.py "base_usdclp 2.xlsx" datos/procesados/ [--ipsa ipsa.csv]
+python src/preparar_base_v2.py "datos/base_usdclp 2.xlsx" datos/procesados/ [--ipsa ipsa.csv]
 ```
 
 Dependencias: `pandas`, `numpy`, `openpyxl`, `holidays`.
