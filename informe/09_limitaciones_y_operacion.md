@@ -64,8 +64,8 @@ Las bases piden, para cada jornada, la **dirección esperada, la probabilidad es
 | 5 | Emitir dirección, probabilidad y exposición, y agregarlas a la bitácora (`bitacora_senales.csv`). | `senal_del_dia.py` |
 
 ```bash
-python preparar_base_v2.py "base_usdclp 2.xlsx" datos/procesados/
-python senal_del_dia.py datos/procesados/modelo_usdclp_desde_2001.csv
+python src/preparar_base_v2.py "datos/base_usdclp 2.xlsx" datos/procesados/
+python src/senal_del_dia.py datos/procesados/modelo_usdclp_desde_2001.csv
 ```
 
 El percentil de confianza necesita las probabilidades de los 250 días anteriores, así que el script usa los modelos de los bloques que cubren esos días (unos 13 bloques de 21 días).
@@ -75,7 +75,7 @@ El percentil de confianza necesita las probabilidades de los 250 días anteriore
 - **Cada 21 días hábiles** la base llega a un bloque nuevo y el script entrena solo ese bloque. Durante el monitoreo toca un reentrenamiento, alrededor del 26 de noviembre de 2026; la fecha exacta depende de los días hábiles de la base.
 - **Si se corrige un dato antiguo**, el script lo detecta y reentrena el bloque afectado.
 
-**Verificación.** `verificar_senal.py` compara el script de la señal diaria con el walk-forward del informe (`modelo_adaptativo_colab.py`).
+**Verificación.** Comparamos la señal de `senal_del_dia.py` con el walk-forward del informe (`modelo_adaptativo_colab.py`):
 
 - **Probabilidades:** coinciden en 551 días (julio de 2024 a octubre de 2026), con una diferencia máxima de 6·10⁻⁶, que es redondeo.
 - **Exposiciones:** coinciden en los 301 días comparados.
