@@ -164,6 +164,4 @@ El detalle, las reglas de operación y los riesgos están en la [sección 9.4 de
 
 Series diarias de Bloomberg entregadas por el laboratorio: USD/CLP (OHLC), monedas, commodities, bolsas, tasas locales y de EE.UU., volatilidades, posiciones de la banca y series macro. Todas son datos públicos de mercado. [confirmar con el laboratorio que la base puede publicarse en el repositorio]
 
-## Licencia
 
-[completar: licencia abierta del repositorio, por ejemplo MIT]
