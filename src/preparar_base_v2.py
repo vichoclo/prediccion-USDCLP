@@ -55,8 +55,48 @@ def proximo_habil(d):
     return d
 
 
+COLUMNA_CLAVE = "USDCLP Curncy|PX_LAST"
+
+
+def leer_base_cruda(ruta):
+    """Lee la base cruda de Bloomberg. Busca la hoja 'datos'; si no existe, usa la hoja que
+    tenga la columna 'fecha' y el cierre del USD/CLP, y avisa. Si el archivo es una base ya
+    tratada (salida de este script), lo dice en vez de fallar con un error de pandas."""
+    import sys
+    if not Path(ruta).exists():
+        sys.exit(f"No encuentro '{ruta}'. Súbalo al panel de archivos de Colab o revise el nombre "
+                 f"(si tiene espacios, va entre comillas).")
+    if str(ruta).lower().endswith(".csv"):
+        raw = pd.read_csv(ruta)
+    else:
+        hojas = pd.ExcelFile(ruta).sheet_names
+        if "datos" in hojas:
+            hoja = "datos"
+        elif "modelo" in hojas:
+            sys.exit(f"'{ruta}' es una base YA TRATADA (hoja 'modelo'), no la base cruda de Bloomberg.\n"
+                     f"No hace falta volver a prepararla: úsela directo con senal_del_dia.py.\n"
+                     f"preparar_base_v2.py necesita la base cruda (por ejemplo, 'base_usdclp 2.xlsx', hoja 'datos').")
+        else:
+            hoja = None
+            for h in hojas:
+                cols = pd.read_excel(ruta, sheet_name=h, nrows=0).columns
+                if "fecha" in cols and COLUMNA_CLAVE in cols:
+                    hoja = h
+                    break
+            if hoja is None:
+                sys.exit(f"'{ruta}' no tiene una hoja 'datos' ni otra con las columnas 'fecha' y '{COLUMNA_CLAVE}'.\n"
+                         f"Hojas del archivo: {hojas}.\n"
+                         f"La base cruda debe tener el formato de 'base_usdclp 2.xlsx': una fila por fecha y "
+                         f"columnas 'TICKER|CAMPO'.")
+            print(f"Aviso: no hay hoja 'datos'; uso la hoja '{hoja}'.")
+        raw = pd.read_excel(ruta, sheet_name=hoja)
+    if "fecha" not in raw.columns or COLUMNA_CLAVE not in raw.columns:
+        sys.exit(f"'{ruta}' no tiene las columnas 'fecha' y '{COLUMNA_CLAVE}'.")
+    return raw
+
+
 def cargar(ruta, ipsa_ext=None):
-    raw = pd.read_excel(ruta, sheet_name="datos")
+    raw = leer_base_cruda(ruta)
     raw["fecha"] = pd.to_datetime(raw["fecha"])
     raw = raw.set_index("fecha").sort_index()
     if ipsa_ext is not None:
