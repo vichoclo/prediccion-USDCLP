@@ -2,7 +2,7 @@
 
 Torneo Banco Itaú y FEN · Data Science en Finanzas · Facultad de Economía y Negocios, Universidad de Chile
 
-[completar: nombres de la pareja]
+Vicente Acevedo y José Portillo
 
 ---
 
