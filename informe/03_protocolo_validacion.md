@@ -105,9 +105,9 @@ El modelo 2 del adaptativo **no se reeligió**: usa los mismos umbrales y el mis
 
 | Prueba | Qué hace | Resultado |
 |---|---|---|
-| **Truncamiento** | Corta los datos en una fecha, vuelve a correr todo y compara las predicciones hasta esa fecha con las de la corrida completa. Si algo usara el futuro, cambiarían. | Logística, LSTM y GARCH del sistema base: predicciones idénticas (diferencias ≤ 5·10⁻⁷, redondeo). El adaptativo se verifica igual con `verificar_senal.py`, que corta la base en cada fecha (sección 9.4). |
+| **Truncamiento** | Corta los datos en una fecha, vuelve a correr todo y compara las predicciones hasta esa fecha con las de la corrida completa. Si algo usara el futuro, cambiarían. | Logística, LSTM y GARCH del sistema base: predicciones idénticas (diferencias ≤ 5·10⁻⁷, redondeo). El adaptativo se verificó recalculando su señal con la base cortada en cada fecha: coincide con el walk-forward (sección 9.4). |
 | **Etiqueta barajada** | Desordena el objetivo y repite todo el proceso. Sin relación real, el sistema no debería encontrar señal. | LSTM: acierto en el quintil de mayor confianza de 45-50%, sin mejora de log-loss. Sistema completo: el resultado real supera a las 30 permutaciones. |
-| **Réplica del sistema base** | El código del adaptativo, con los parámetros del base, debe reproducir el base. | Probabilidades idénticas a las de `lstm.py` (diferencia máxima 10⁻⁶). |
+| **Réplica del sistema base** | El código del adaptativo, con los parámetros del base, debe reproducir el base. | Probabilidades idénticas a las de la implementación original del sistema base (diferencia máxima 10⁻⁶). |
 
 ---
 
