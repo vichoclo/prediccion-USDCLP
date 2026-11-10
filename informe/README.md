@@ -2,7 +2,7 @@
 
 Torneo Banco Itaú y FEN · Data Science en Finanzas: ¿Sube o baja el dólar mañana?
 
-[completar: nombres de la pareja]
+Vicente Acevedo y José Portillo
 
 ## Resumen ejecutivo
 
