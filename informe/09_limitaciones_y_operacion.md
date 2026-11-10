@@ -30,7 +30,7 @@
 
 ## 9.2 Limitaciones de los datos
 
-- **Costo de transacción y carry:** usamos 1 pb por unidad de cambio de exposición y nuestra propia fórmula de carry. [confirmar: ambos con el código de evaluación del laboratorio]
+- **Costo de transacción y carry:** usamos 1 pb por unidad de cambio de exposición y nuestra propia fórmula de carry.
 - **Posición en pesos:** suponemos que la exposición 0 rinde 0. Si el laboratorio abona la tasa en pesos a la posición fuera del mercado, cambia la comparación con las referencias.
 - **Datos reales de octubre-noviembre:** provienen de la base actualizada que entregó el laboratorio. Algunas series llegaron sin dato el último día (cobre LME, MSCI EM): entran como “sin cambio”.
 - **Fechas de publicación macro** incompletas antes de 2019, y valores ya revisados. No afecta al sistema final, que no usa variables macro.
