@@ -45,6 +45,7 @@ Walk-forward, neto de carry y 1 pb de costo:
 
 ```
 ├── README.md                 ← este archivo: qué hace el repositorio y cómo usarlo
+├── backtesting.ipynb         ← notebook con el resumen del backtesting, gráficos y estadísticas
 ├── requirements.txt
 ├── datos/
 │   └── base_usdclp 2.xlsx    ← base Bloomberg del laboratorio (cruda)
@@ -58,6 +59,46 @@ Walk-forward, neto de carry y 1 pb de costo:
     ├── README.md             ← resumen ejecutivo e índice
     └── figuras/
 ```
+
+---
+
+## Modelos y supuestos
+
+| Pieza | Qué hace | Cómo aprende |
+|---|---|---|
+| **Modelo 1 · LSTM** | Red recurrente de 16 unidades que lee las 11 variables de los últimos 20 días y entrega la probabilidad de que el dólar suba más que el carry (calibración de Platt, promedio de 5 semillas). | Toda la historia con peso exponencial: un día de hace 250 días hábiles pesa la mitad. Se reentrena cada 21 días. |
+| **Modelo 1 · Logística** | Regresión logística L2 (C = 0,05) con las 11 variables del día *t*. | Solo los últimos 500 días hábiles. Se reentrena cada 21 días. |
+| **Combinación** | *p* = promedio simple de las dos probabilidades. | — |
+| **Modelo 2 · Confianza** | Compara \|*p* − 0,5\| con los 250 días anteriores. Bajo el percentil 60: 0. Entre 60 y 80: ±1. Sobre 80: ±3. El signo es el de *p* − 0,5. | Umbrales fijos, elegidos en 2015-2021. |
+| **Modelo 2 · GARCH(1,1)** | Pronostica la volatilidad de mañana. Si supera 1,5 veces su mediana de 250 días, un ±3 baja a ±1. | 1.000 retornos, reestimado cada 21 días. |
+
+**Variables (11):** retornos del cobre LME y COMEX, oro, DXY y BBDXY, momentum de 20 días del DXY, rand, MSCI EM, cambio de la volatilidad implícita emergente, viernes y días corridos hasta la próxima jornada.
+
+**Supuestos clave:**
+
+- Las variables del día *t* usan solo cierres conocidos al final de *t*. Como permite el diccionario del laboratorio, los cierres de una misma fecha se consideran disponibles, aunque algunos mercados cierren después de Santiago.
+- Walk-forward con embargo de 5 días: cada predicción usa modelos entrenados solo con el pasado.
+- Costo de transacción: 1 pb por unidad de cambio de exposición. La exposición 0 rinde 0.
+- Carry = (TPM − tasa en dólares) × días corridos hasta la próxima jornada / 360, con SOFR desde 2018 y Fed funds antes. El largo en dólares lo paga y el corto lo recibe.
+
+El detalle está en las secciones [4](informe/04_modelo1_direccion.md) y [5](informe/05_modelo2_exposicion.md) del informe.
+
+---
+
+## Mecanismo de ejecución
+
+| Elemento | Definición |
+|---|---|
+| **Momento de la decisión** | Al final del día *t*, con todos los cierres de *t*. Los últimos en estar disponibles son los de Nueva York (17:00 ET; 18:00 o 19:00 de Santiago, según la época del año). |
+| **Precio** | **Cierre** del USD/CLP de la base (`USDCLP Curncy\|PX_LAST`). No se usa la apertura ni el dólar observado. |
+| **Tenencia** | La exposición *e<sub>t</sub>* ∈ {−3, −1, 0, +1, +3} se mantiene del cierre de *t* al cierre de *t+1*. |
+| **Resultado de la jornada** | *e<sub>t</sub>* × [ln(P<sub>t+1</sub>/P<sub>t</sub>) × 10⁴ − carry<sub>t</sub>] − 1 pb × \|*e<sub>t</sub>* − *e<sub>t−1</sub>*\|, en pb. |
+| **Qué gatilla una operación** | Cada día se recalcula la exposición con la regla del modelo 2. Cambia cuando cambia el signo de *p* − 0,5 (con exposición distinta de 0), cuando el percentil de confianza cruza 0,6 u 0,8, o cuando el tope del GARCH se activa o se desactiva. No hay *stop loss* ni objetivo de ganancia. |
+| **Reentrenamiento** | Cada 21 días hábiles, en el calendario fijo del walk-forward. Entre reentrenamientos, los modelos no cambian. |
+
+**Para replicar en el monitor del laboratorio:** con la base hasta el día *t*, `python src/senal_del_dia.py datos/procesados/modelo_usdclp_desde_2001.csv` entrega *e<sub>t</sub>*. Esa exposición se aplica al retorno de cierre a cierre de *t* a *t+1*, con la fórmula de arriba. `resultados/posiciones_adaptativo.csv` trae la exposición de cada día del backtest, para compararla con la del monitor.
+
+**Advertencia:** la decisión usa cierres de Nueva York posteriores al cierre de Santiago, pero se valoriza al cierre de Santiago de ese mismo día. Las bases lo permiten, pero en tiempo real no se puede operar a ese precio. Si el monitor valoriza con un precio posterior, por ejemplo la apertura de *t+1*, el resultado esperado es menor (informe, secciones [2.4](informe/02_analisis_exploratorio_y_variables.md) y [6.5](informe/06_resultados_y_significancia.md)).
 
 ---
 
@@ -86,6 +127,19 @@ Clonar el repositorio y correr, en celdas:
 ```
 
 Los scripts se corren con `!python` desde una celda. Si se pega su código directamente en una celda, `preparar_base_v2.py` falla, porque lee argumentos.
+
+### Notebook de backtesting
+
+`backtesting.ipynb` resume el backtesting con las salidas de `resultados/`, así que corre en segundos. Se abre en Colab o en Jupyter desde la raíz del repositorio. Incluye:
+
+- **Estadísticas de trading por tramo**, para el sistema, el control y las tres referencias:
+  - retorno bruto, neto de carry, y neto de carry y costos;
+  - volatilidad, Sharpe y máxima caída;
+  - % de aciertos y número de operaciones.
+- **Gráficos:** resultado acumulado con la exposición diaria, caídas, retorno por año y sensibilidad a los costos.
+- **Significancia** y **lectura de la convicción**.
+
+Con `RECALCULAR = True` en la primera celda de código, el notebook vuelve a correr la preparación, el walk-forward y la evaluación desde cero.
 
 ### En un computador
 
@@ -187,4 +241,4 @@ El detalle, las reglas de operación y los riesgos están en la [sección 9.4 de
 
 ## Datos
 
-Series diarias de Bloomberg entregadas por el laboratorio: USD/CLP (OHLC), monedas, commodities, bolsas, tasas locales y de EE.UU., volatilidades, posiciones de la banca y series macro. Todas son datos públicos de mercado. [confirmar con el laboratorio que la base puede publicarse en el repositorio]
+Series diarias de Bloomberg entregadas por el laboratorio: USD/CLP (OHLC), monedas, commodities, bolsas, tasas locales y de EE.UU., volatilidades, posiciones de la banca y series macro. Todas son datos públicos de mercado.
