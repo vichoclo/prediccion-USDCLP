@@ -48,18 +48,18 @@ Así los pesos siguen a las relaciones que cambian. Por ejemplo, el coeficiente 
 
 ## Índice
 
-| # | Sección | Estado |
-|---|---|---|
-| 0 | [Problema, reglas y criterio de evaluación](00_problema_y_reglas.md) | borrador |
-| 1 | [Datos y limpieza](01_datos_y_limpieza.md) | borrador |
-| 2 | [Análisis exploratorio y selección de variables](02_analisis_exploratorio_y_variables.md) | borrador |
-| 3 | [Protocolo de validación](03_protocolo_validacion.md) | borrador |
-| 4 | [Modelo 1: dirección (adaptativo)](04_modelo1_direccion.md) | borrador |
-| 5 | [Modelo 2: exposición (−3, −1, 0, +1, +3)](05_modelo2_exposicion.md) | borrador |
-| 6 | [Resultados fuera de muestra y significancia](06_resultados_y_significancia.md) | borrador |
-| 7 | [Lectura de la convicción](07_lectura_conviccion.md) | borrador |
-| 8 | [Modelos probados y descartados](08_modelos_descartados.md) | borrador |
-| 9 | [Limitaciones, riesgos y operación en vivo](09_limitaciones_y_operacion.md) | borrador |
+| # | Sección |
+|---|---|
+| 0 | [Problema, reglas y criterio de evaluación](00_problema_y_reglas.md) |
+| 1 | [Datos y limpieza](01_datos_y_limpieza.md) |
+| 2 | [Análisis exploratorio y selección de variables](02_analisis_exploratorio_y_variables.md) |
+| 3 | [Protocolo de validación](03_protocolo_validacion.md) |
+| 4 | [Modelo 1: dirección (adaptativo)](04_modelo1_direccion.md) |
+| 5 | [Modelo 2: exposición (−3, −1, 0, +1, +3)](05_modelo2_exposicion.md) |
+| 6 | [Resultados fuera de muestra y significancia](06_resultados_y_significancia.md) |
+| 7 | [Lectura de la convicción](07_lectura_conviccion.md) |
+| 8 | [Modelos probados y descartados](08_modelos_descartados.md) |
+| 9 | [Limitaciones, riesgos y operación en vivo](09_limitaciones_y_operacion.md) |
 
 ## Convenciones del informe
 
@@ -67,4 +67,3 @@ Así los pesos siguen a las relaciones que cambian. Por ejemplo, el coeficiente 
 - *t* es el día de la decisión (al cierre de Santiago); *t+1* es la jornada que se predice.
 - Salvo que se indique otra cosa, las cifras son netas de carry con 1 pb de costo por unidad de cambio de exposición.
 - El sistema opera desde febrero de 2006: antes, el GARCH y el percentil de confianza todavía no tienen la historia que necesitan.
-- Los textos entre corchetes `[completar: …]` o `[confirmar: …]` marcan datos pendientes.

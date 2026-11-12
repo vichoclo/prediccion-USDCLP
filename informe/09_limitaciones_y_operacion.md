@@ -43,7 +43,7 @@
 | Riesgo | Ejemplo | Cómo lo enfrentamos |
 |---|---|---|
 | **Noticias locales fuera del alcance de las variables** | Anuncio de intervención cambiaria del Banco Central (14-jul-2022): uno de los peores días de validación. | El modelo no las ve. El tope del GARCH reduce el tamaño cuando la volatilidad ya está alta, pero no anticipa el anuncio. |
-| **Horario de la decisión** | Si la señal debe enviarse antes del cierre de Nueva York (17:00 ET), los cierres de *t* del rand, el DXY o el oro no existirían al decidir. | [confirmar con el laboratorio: hora límite de envío y precio de evaluación]. Si el envío es antes de ese cierre, la versión correcta sería la estricta. |
+| **Horario de la decisión** | Si la señal debe enviarse antes del cierre de Nueva York (17:00 ET), los cierres de *t* del rand, el DXY o el oro no existirían al decidir. | Suponemos que la señal se calcula después del cierre de Nueva York y se valoriza al cierre de Santiago, como en el backtest. Si el envío fuera antes de ese cierre, la versión correcta sería la estricta. |
 | **Datos faltantes** | Una serie sin dato el día de la decisión. | El valor faltante se reemplaza por la media de entrenamiento (0 tras estandarizar), es decir, la variable no opina ese día. |
 | **Cambio de régimen** | Que las relaciones vuelvan a cambiar. | El sistema se reentrena cada 21 días y da más peso a lo reciente, así que se ajusta en semanas. Mientras tanto, se abstiene cuando la confianza es baja. |
 | **Adaptación a ruido** | Con ventanas cortas, un mes atípico puede mover los pesos. | La ventana de la logística (500 días) y la vida media del LSTM (250 días) son largas frente a un mes, y el promedio de ambos amortigua los cambios. |
@@ -57,7 +57,7 @@ Las bases piden, para cada jornada, la **dirección esperada, la probabilidad es
 
 | Paso | Qué se hace | Script |
 |---|---|---|
-| 1 | Actualizar la base cruda con los cierres del día. | [completar: fuente de datos en vivo entregada por el laboratorio] |
+| 1 | Actualizar la base cruda con los cierres del día. | Base actualizada que entrega el laboratorio (`datos/base_usdclp 2.xlsx`) |
 | 2 | Regenerar la base tratada. | `preparar_base_v2.py` |
 | 3 | Calcular las probabilidades del LSTM y de la logística con el calendario de reentrenamiento del walk-forward: cada 21 días, con los mismos pesos y semillas. | `senal_del_dia.py` |
 | 4 | Calcular la confianza (percentil contra los 250 días previos), el pronóstico del GARCH y la volatilidad relativa. | `senal_del_dia.py` |

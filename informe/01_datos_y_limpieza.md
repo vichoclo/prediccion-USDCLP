@@ -134,7 +134,7 @@ Una serie fechada en *t* no siempre está disponible al cierre de *t*. Aplicamos
 | Serie | Rezago | Motivo |
 |---|---|---|
 | SOFR / Fed funds | 1 día | Se publican la mañana siguiente. |
-| Posiciones en derivados y spot de la banca (`CLPBODMB`, `CLPBLDMB`, `CLPBSMB`) | 2 días | Supuesto conservador. [confirmar el rezago real] |
+| Posiciones en derivados y spot de la banca (`CLPBODMB`, `CLPBLDMB`, `CLPBSMB`) | 2 días | Supuesto conservador, no verificado. No afecta al sistema final, que no usa estas series. |
 | UF | 0 | Se conoce por anticipado. |
 | Macro (IMACEC m/m y a/a, IPC a/a, desempleo) | Por `FECHA_RELEASE` | Ver abajo. |
 
@@ -187,7 +187,7 @@ en puntos base, donde $i^{USD}$ es SOFR desde abril de 2018 y Fed funds antes. U
 
 Su magnitud no es despreciable: entre 2010 y 2026, comprar dólar siempre da +67,2% bruto y +26,4% neto de carry. En 2022 el dólar subió 0,9%, pero comprar siempre terminó en −6,1%.
 
-> [confirmar: que la fórmula coincide con la del código de evaluación del laboratorio. Las bases mencionan una columna de carry ya calculada que no venía en el archivo.]
+> Las bases mencionan una columna de carry ya calculada que no venía en el archivo, así que lo construimos con esta fórmula. Si el código de evaluación del laboratorio usa otra, los resultados netos pueden cambiar levemente.
 
 **Objetivos:**
 

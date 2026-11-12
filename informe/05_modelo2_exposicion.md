@@ -100,7 +100,7 @@ retornos hasta t ──► GARCH(1,1) ──► σ(t+1) / mediana 250 días ─�
 
 $$\text{resultado}_t = e_t \times \text{retorno neto de carry}_{t \to t+1} - c \times |e_t - e_{t-1}|$$
 
-donde *c* es el costo por unidad de cambio de exposición. Elegimos con *c* = 1 pb y reportamos 0, 1 y 2 pb. [confirmar: costo que aplica el laboratorio]
+donde *c* es el costo por unidad de cambio de exposición. Elegimos con *c* = 1 pb, un supuesto propio, y reportamos 0, 1 y 2 pb. El costo exacto lo aplica el código de evaluación del laboratorio.
 
 ---
 
@@ -108,7 +108,7 @@ donde *c* es el costo por unidad de cambio de exposición. Elegimos con *c* = 1 
 
 - **El tope está en el borde de la grilla** (1,5 es el valor menos intervencionista probado) y actúa pocos días, casi siempre en episodios de crisis. En el adaptativo cambió 97 días en 2005-2014 (sobre todo en 2008), 20 en 2015-2021, 16 en validación (julio a octubre de 2022) y 3 en el test (marzo-abril de 2026). En todos los tramos sumó resultado. En 2005-2014 redujo la máxima caída de −36,7% a −15,8%.
 - **Casi toda la ganancia viene de los días con exposición 3.** En el adaptativo, los días con ±1 aportan algo en 2005-2024 (13-26% del resultado), pero pierden en el test. Maximizar el retorno empuja hacia el tamaño 3, que es el que más amplifica también la suerte (sección 7).
-- **Exposición 0 vale 0** según la fórmula de las bases (sin carry). Si el laboratorio abona la tasa en pesos a la posición fuera del mercado, cambiaría la comparación. [confirmar con el laboratorio]
+- **Exposición 0 vale 0** según la fórmula de las bases (sin carry). Si el laboratorio abona la tasa en pesos a la posición fuera del mercado, cambiaría la comparación.
 - **Umbrales elegidos para otro modelo 1.** Los cortes 0,6 / 0,8 se eligieron con las probabilidades del sistema base. No los reoptimizamos para el adaptativo, para no sumar otra elección hecha con el test a la vista.
 - **Señal en vivo:** se envía la exposición del sistema adaptativo. La del sistema base se calcula en paralelo, solo como diagnóstico.
 

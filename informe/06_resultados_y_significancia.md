@@ -29,7 +29,7 @@
 | Sistema | Modelo 1 adaptativo (sección 4) → modelo 2 (confianza + tope GARCH 1,5, sección 5). |
 | Control | Sistema base: el mismo modelo 2 sobre el modelo 1 con toda la historia, reentrenado cada 126 días. |
 | Resultado diario | exposición × retorno neto de carry − costo × \|cambio de exposición\| |
-| Costos | 0, 1, 2 y 5 pb por unidad de cambio de exposición. La cifra principal usa 1 pb. [confirmar: costo del laboratorio] |
+| Costos | 0, 1, 2 y 5 pb por unidad de cambio de exposición. La cifra principal usa 1 pb (supuesto propio). |
 | Referencias (bases) | **Comprar siempre** (+1 todos los días), **no operar nunca** (0) y **operar siempre con exposición 1** en la dirección del modelo (±1). |
 | Tramos | Desarrollo parte 1 (2005-2014; el sistema opera desde febrero de 2006), desarrollo parte 2 (2015-2021), validación (2022-2024), test (2025-01 a 2026-10-05) y datos reales (6-oct a 5-nov-2026). |
 
@@ -41,7 +41,7 @@ Todas las cifras son fuera de muestra respecto del modelo 1: cada día se predic
 | 2015-2021 | Se eligieron las variables y el modelo 2. |
 | Validación y test | Se usaron para elegir el adaptativo. |
 
-> [completar: resultado en el tramo de test con el código de evaluación del laboratorio]
+> Todas las cifras se calcularon con nuestra implementación de la fórmula de resultado de las bases (sección 0.1), con 1 pb de costo y el carry de la sección 1. No usamos el código de evaluación del laboratorio, así que sus cifras pueden diferir levemente.
 
 ---
 
@@ -62,7 +62,7 @@ Todas las cifras son fuera de muestra respecto del modelo 1: cada día se predic
 
 ![Gráfico 6](figuras/g6_resultado_acumulado.png)
 
-El gráfico muestra dos estrategias que llegan a un nivel parecido por caminos distintos. El adaptativo gana sobre todo en 2008-2010 y en 2025. El base gana en 2015-2024, cuando el cierre asincrónico todavía transmitía información y las relaciones eran estables.
+Arriba, el resultado acumulado de cada estrategia (suma de retornos logarítmicos, en puntos porcentuales); las líneas verticales separan los tramos. Abajo, la exposición vigente del sistema adaptativo cada jornada. El gráfico muestra dos estrategias que llegan a un nivel parecido por caminos distintos. El adaptativo gana sobre todo en 2008-2010 y en 2025. El base gana en 2015-2024, cuando el cierre asincrónico todavía transmitía información y las relaciones eran estables.
 
 ### Sensibilidad a los costos (sistema adaptativo)
 
